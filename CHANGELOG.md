@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.1 — 2026-09-19
+
+### Fixes
+
+- **rules**: a slow machine could silently disable a working pattern (20b5207)
+
 ## v1.1.0 — 2026-09-19
 
 ### Features
