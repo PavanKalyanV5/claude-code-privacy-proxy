@@ -5,7 +5,7 @@
 // FOUND BY ADOPTING A PATTERN. `api[_-]?key\s*[=:]\s*[A-Za-z0-9_-]{16,}` is a
 // sensible rule for catching a key in an assignment. It also matches
 // "api-key:f9cff609da63178e" inside the label
-// `AIzafffffffffffffffffffffffffffffffffff`, producing a nested
+// `AIza<35 more chars>`, producing a nested
 // `[PII:google-[PII:generic-...]]` that no longer resolves.
 //
 // Two things break when that happens:

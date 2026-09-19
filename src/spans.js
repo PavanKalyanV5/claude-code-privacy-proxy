@@ -33,7 +33,7 @@ function labelOf(match, labels) {
 //
 // WHY. A label is `[PII:category:16hex]`, and some perfectly reasonable
 // patterns match that shape: `api[_-]?key\s*[=:]\s*[A-Za-z0-9_-]{16,}` finds
-// "api-key:f9cff609da63178e" INSIDE `AIzafffffffffffffffffffffffffffffffffff`.
+// "api-key:f9cff609da63178e" INSIDE `AIza<35 more chars>`.
 // The result was a nested label, `[PII:google-[PII:generic-...:...]]`, which
 // no longer resolves -- and resolution is what lets tools edit real files.
 //

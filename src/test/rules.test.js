@@ -109,9 +109,38 @@ test('CRITICAL 4: a Unicode literal gets a boundary on its non-ASCII edge too', 
   assert.ok(!matches(c, 'Josésito was here'));
 });
 
-test('CRITICAL 4: shipped email/phone patterns are still accepted after the Unicode fix', () => {
-  assert.strictEqual(isPatternSafe('[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}', 'gi').ok, true);
-  assert.strictEqual(isPatternSafe('(?<![\d.])\d{3}[ .-]\d{3}[ .-]\d{4}(?![\d.])', 'g').ok, true);
+test('CRITICAL 4: every shipped pattern is still accepted after the Unicode fix', () => {
+  // Reads the patterns from the shipped config instead of retyping them.
+  //
+  // The previous version passed them as single-quoted JS string literals,
+  // where `\.` collapses to `.` and `\d` collapses to `d`. So a test named
+  // "shipped email/phone patterns" was actually asserting that
+  // `(?<![d.])d{3}[ .-]d{3}[ .-]d{4}(?![d.])` is safe -- a pattern this
+  // project has never shipped, matching the letter d rather than a digit.
+  // CodeQL flagged it as a useless escape; it was a test checking the wrong
+  // thing entirely.
+  //
+  // Reading the real file removes the escaping problem AND widens the test:
+  // it now covers every pattern in the template, not the two someone
+  // remembered to copy.
+  const fs = require('fs');
+  const path = require('path');
+  const cfg = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', '..', 'config', 'redact-rules.example.json'), 'utf8')
+  );
+  const patterns = cfg.patterns || [];
+  assert.ok(patterns.length >= 2, 'expected the template to ship patterns');
+
+  for (const p of patterns) {
+    const verdict = isPatternSafe(p.regex, p.flags || 'g');
+    assert.strictEqual(verdict.ok, true, (p.name || '?') + ' rejected: ' + (verdict.why || ''));
+  }
+
+  // The two that motivated this test are still specifically present, so
+  // deleting them from the template cannot quietly empty the loop above.
+  const names = patterns.map((p) => p.name);
+  assert.ok(names.includes('email'), 'the email pattern is missing from the template');
+  assert.ok(names.includes('phone'), 'the phone pattern is missing from the template');
 });
 
 

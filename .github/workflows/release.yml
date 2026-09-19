@@ -44,9 +44,15 @@ permissions:
 jobs:
   verify:
     # The version-bump commit this workflow pushes would otherwise trigger
-    # the workflow again, forever. Skipping on that marker is cheaper and
-    # more obvious than filtering by actor.
-    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    # the workflow again, forever.
+    #
+    # Matched on the SUBJECT LINE, not anywhere in the message. The first
+    # version used `contains(...)` over the whole message, and the very
+    # commit that introduced this workflow skipped itself -- its body
+    # explained the marker, so the marker was present, so the run was
+    # cancelled. A guard that fires on prose about the guard is a guard that
+    # will misfire again the moment anyone documents it.
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
     strategy:
       fail-fast: true
       matrix:
@@ -113,8 +119,9 @@ jobs:
           mv /tmp/new.md CHANGELOG.md
 
           git add package.json CHANGELOG.md
-          # [skip release] stops this commit from triggering the workflow again.
-          git commit -m "chore(release): v$V [skip release]"
+          # The subject prefix is what the verify job's guard matches on, so
+          # this commit does not trigger another release.
+          git commit -m "chore(release): v$V"
           git tag "v$V"
           git push origin main --follow-tags
 
