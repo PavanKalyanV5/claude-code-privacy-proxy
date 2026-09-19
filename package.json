@@ -44,7 +44,8 @@
     "doctor": "node src/doctor.js",
     "patterns:adopt": "node src/adopt-patterns.js",
     "audit:rules": "node src/audit-rules.js",
-    "vscode": "node src/cli/vscode-config.js"
+    "vscode": "node src/cli/vscode-config.js",
+    "version:next": "node src/cli/version.js"
   },
   "scriptsInfo": {
     "help": {
@@ -166,6 +167,11 @@
       "group": "Start here",
       "summary": "Regenerate the VS Code task and debug entries from these descriptions.",
       "detail": "Writes .vscode/tasks.json and .vscode/launch.json so every command appears in the Run Task picker with its description underneath, and in the Run and Debug panel with breakpoints working. Generated from scriptsInfo in package.json, so the terminal help, the task picker and the debug list cannot describe the same command three different ways. Pass --check to fail when regeneration would change something."
+    },
+    "version:next": {
+      "group": "Publishing safely",
+      "summary": "Show what the next release version would be, and why.",
+      "detail": "Reads the Conventional Commits since the last tag: feat gives a minor bump, fix and perf give a patch, a ! or a BREAKING CHANGE footer gives a major, and anything else releases nothing. Purely informational locally; the release workflow runs the same script on push to main."
     }
   },
   "files": [

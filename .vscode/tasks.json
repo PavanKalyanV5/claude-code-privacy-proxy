@@ -293,6 +293,18 @@
         "panel": "dedicated",
         "clear": true
       }
+    },
+    {
+      "type": "npm",
+      "script": "version:next",
+      "label": "Publishing safely: version:next",
+      "detail": "Show what the next release version would be, and why.  ·  Reads the Conventional Commits since the last tag: feat gives a minor bump, fix and perf give a patch, a ! or a BREAKING CHANGE footer gives a major, and anything else releases nothing. Purely informational locally; the release workflow runs the same script on push to main.",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
     }
   ]
 }

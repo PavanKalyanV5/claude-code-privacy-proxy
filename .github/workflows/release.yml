@@ -1,91 +1,150 @@
-# Continuous DELIVERY, deliberately stopping short of continuous deployment.
+# Automatic release on push to main.
 #
-# There is no build step to automate: zero dependencies, plain Node, nothing
-# compiled or bundled. So "CD" here means one thing -- when a version tag is
-# pushed, produce a citable, verifiable release artifact.
+# Conventional Commits decide the version: feat -> minor, fix/perf -> patch,
+# `!` or a BREAKING CHANGE footer -> major. Anything else releases NOTHING,
+# which is the rule that keeps this useful: cutting a version for a README
+# typo produces a changelog nobody reads.
 #
-# WHAT THIS DOES NOT DO, AND WHY
+# THE THREE THINGS THAT MAKE AUTO-PUBLISH DEFENSIBLE
 #
-# It does not publish to npm automatically. For most projects that would be
-# the obvious final step; for this one it is a decision with a real cost.
 # This package sits in front of every API request and handles personal data
-# in plaintext. Auto-publishing means a tag push can put new code with that
-# access onto other people's machines without anyone having looked at the
-# diff of what was actually published.
+# in plaintext. Publishing it automatically means a push can put new code
+# with that access onto other people's machines. That is a real cost, and it
+# is paid down with three specific controls rather than a promise:
 #
-# The whole project argues that a privacy tool should be inspectable rather
-# than trusted. Automating its own distribution would undercut that. So a
-# release is prepared automatically and PUBLISHED by a human running
-# `npm publish` after checking `npm pack --dry-run`.
+#   1. It cannot publish anything that does not pass the full suite on all
+#      three platforms first. `needs: [verify]` is not decoration.
+#   2. `--provenance` signs the package with a link back to the exact commit
+#      and workflow run that built it, so anyone can verify the tarball on
+#      npm came from this repository and not from a stolen token.
+#   3. It publishes only what `npm pack` would, and prints that list into
+#      the log first, so the contents of every release are auditable after
+#      the fact.
 #
-# It also does not deploy anything. There is no server. The proxy runs on
-# the user's machine, which is the point.
+# The residual risk is a compromised NPM_TOKEN or a malicious commit on
+# main. Branch protection on main is what covers the second; provenance at
+# least makes the first visible.
 name: release
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
 
+# Never two releases at once. Without this, two quick pushes race and the
+# second bumps a version the first has not tagged yet.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
-  contents: write
+  contents: write     # commit the version bump, push the tag, create the release
+  id-token: write     # npm provenance
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  verify:
+    # The version-bump commit this workflow pushes would otherwise trigger
+    # the workflow again, forever. Skipping on that marker is cheaper and
+    # more obvious than filtering by actor.
+    if: "!contains(github.event.head_commit.message, '[skip release]')"
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - run: npm test
 
-      # A tag is a promise that this version works. Verify it rather than
-      # assume it -- a broken release is worse than a late one.
-      - name: Tests must pass at the tagged commit
-        run: npm test
+  release:
+    needs: [verify]
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.decide.outputs.releasable }}
+      version: ${{ steps.decide.outputs.next }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the version is computed from the commits since the
+          # last tag, and a shallow clone has neither the tags nor the log.
+          fetch-depth: 0
 
-      - name: Tag must match package.json version
-        shell: bash
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Work out the next version
+        id: decide
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          PKG=$(node -p "require('./package.json').version")
-          if [ "$TAG" != "$PKG" ]; then
-            echo "tag v$TAG does not match package.json $PKG"
-            exit 1
-          fi
-          echo "version $PKG confirmed"
+          node src/cli/version.js
+          node src/cli/version.js --json > /tmp/v.json
+          echo "releasable=$(node -p "require('/tmp/v.json').releasable")" >> "$GITHUB_OUTPUT"
+          echo "next=$(node -p "require('/tmp/v.json').next")" >> "$GITHUB_OUTPUT"
+          node src/cli/version.js --changelog > /tmp/notes.md
 
-      # Exactly what `npm publish` would upload, so the artifact attached to
-      # the release and the tarball on npm are the same bytes.
-      - name: Build the tarball
-        run: npm pack
+      - name: Nothing to release
+        if: steps.decide.outputs.releasable != 'true'
+        run: echo "No feat/fix/perf commits since the last tag. Stopping here, deliberately."
 
-      - name: What is in it
-        shell: bash
+      - name: Bump, changelog, tag
+        if: steps.decide.outputs.releasable == 'true'
+        env:
+          V: ${{ steps.decide.outputs.next }}
         run: |
-          echo "files that would be published:"
-          npm pack --dry-run 2>&1 | sed 's/^/  /'
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Publish the GitHub release
+          node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('package.json','utf8'));
+            p.version = process.env.V;
+            fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+          "
+
+          NOTES=$(cat /tmp/notes.md)
+          HEADER="## v$V — $(date -u +%Y-%m-%d)"
+          if [ -f CHANGELOG.md ]; then EXISTING=$(cat CHANGELOG.md); else EXISTING="# Changelog"; fi
+          printf '%s\n\n%s\n\n%s\n' "$(echo "$EXISTING" | head -1)" "$HEADER" "$NOTES" > /tmp/new.md
+          echo "$EXISTING" | tail -n +2 >> /tmp/new.md
+          mv /tmp/new.md CHANGELOG.md
+
+          git add package.json CHANGELOG.md
+          # [skip release] stops this commit from triggering the workflow again.
+          git commit -m "chore(release): v$V [skip release]"
+          git tag "v$V"
+          git push origin main --follow-tags
+
+      - name: What would be published
+        if: steps.decide.outputs.releasable == 'true'
+        run: npm pack --dry-run 2>&1 | sed 's/^/  /'
+
+      - name: GitHub release
+        if: steps.decide.outputs.releasable == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: '*.tgz'
-          generate_release_notes: true
-          draft: true
-          body: |
-            Install from source:
+          tag_name: v${{ steps.decide.outputs.next }}
+          name: v${{ steps.decide.outputs.next }}
+          body_path: /tmp/notes.md
+          generate_release_notes: false
 
-            ```bash
-            git clone https://github.com/${{ github.repository }}
-            cd ${{ github.event.repository.name }}
-            npm test          # no network required
-            npm run doctor    # checks the whole chain end to end
-            ```
+      - name: Publish to npm
+        if: steps.decide.outputs.releasable == 'true' && env.NPM_TOKEN != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # --provenance ties the tarball to this commit and this run, so the
+        # published artifact can be traced back without trusting the
+        # publisher. Requires id-token: write above.
+        run: npm publish --provenance --access public
 
-            Zero runtime dependencies. See the README for setup and
-            docs/threat-model.md for what this does **not** protect.
-
-            ---
-            *Drafted automatically. Review the attached tarball, then
-            publish. `npm publish` stays a manual step on purpose — see the
-            comment at the top of `.github/workflows/release.yml`.*
+      - name: npm skipped
+        if: steps.decide.outputs.releasable == 'true' && env.NPM_TOKEN == ''
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "NPM_TOKEN is not set, so the GitHub release was created but nothing was published to npm."
+          echo "Add it under Settings -> Secrets and variables -> Actions to enable publishing."
