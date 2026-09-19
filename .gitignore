@@ -53,3 +53,7 @@ nul
 # Marketing drafts. Not part of the shipped product, and not published
 # from here -- they are pasted into each platform.
 articles/
+
+# Playwright MCP scratch: page snapshots and console dumps from driving a
+# browser.
+.playwright-mcp/
