@@ -29,7 +29,11 @@ const { execFileSync } = require('child_process');
 // Redaction state lives outside the repo so it can never be committed and no task
 // working in the repo can stumble on it.
 const RULES_PATH = path.join(os.homedir(), '.claude', 'redaction', 'redact-rules.json');
+// How long the MATCHING itself may take. Enforced inside the probe child.
 const PROBE_TIMEOUT_MS = 500;
+// Backstop for a regex that never returns. Generous on purpose: it must not
+// be reachable by a slow machine, only by a genuinely non-terminating match.
+const HANG_TIMEOUT_MS = 15000;
 
 // The values shipped in the template. Matching these would redact the literal
 // word "Your" out of every file, so they are ignored until replaced.
@@ -123,6 +127,24 @@ function isPatternSafe(source, flags) {
   // A screen that rejects valid patterns with a misleading reason is worse
   // than one that is merely strict -- it sends the user to rewrite a regex
   // that was never the problem.
+  // The child times the REGEX, not itself.
+  //
+  // This used to be a 500ms timeout on the whole child process, which meant
+  // the budget covered node's startup as well as the matching. Bare child
+  // startup measured 74-153ms on an idle machine and far more on a loaded
+  // CI runner -- so on a busy machine a perfectly linear pattern ran out of
+  // budget, was reported as catastrophic backtracking, and was SILENTLY
+  // DISABLED.
+  //
+  // That is not a flaky test, it is a redaction failure: the category that
+  // pattern covered simply stops being redacted, on exactly the machines
+  // most likely to be under load. It surfaced as `git-repo` failing to
+  // redact on one CI job out of nine.
+  //
+  // So the child measures only the probe loop and exits 2 if the MATCHING
+  // exceeded the budget. The parent's timeout stays as a backstop for a
+  // regex that never returns at all, and is now generous enough that
+  // process startup cannot consume it.
   const probe = [
     'const re = new RegExp(process.env.CCR_PROBE_SRC, process.env.CCR_PROBE_FLAGS);',
     'const probes = [',
@@ -134,14 +156,25 @@ function isPatternSafe(source, flags) {
     "  'a.b_c-d+e%'.repeat(2000) + '!',",
     "  '('.repeat(2000), ' '.repeat(20000),",
     '];',
+    'const t0 = Date.now();',
     'for (const p of probes) { re.lastIndex = 0; re.test(p); }',
+    'const ms = Date.now() - t0;',
+    'process.stdout.write(String(ms));',
+    'process.exit(ms > Number(process.env.CCR_PROBE_BUDGET) ? 2 : 0);',
   ].join('\n');
 
   try {
     execFileSync(process.execPath, ['-e', probe], {
-      timeout: PROBE_TIMEOUT_MS,
-      stdio: 'ignore',
-      env: Object.assign({}, process.env, { CCR_PROBE_SRC: source, CCR_PROBE_FLAGS: flags }),
+      // A backstop for a regex that never returns, not a performance budget.
+      // The budget is enforced inside the child, where it can be measured
+      // without process startup counted against it.
+      timeout: HANG_TIMEOUT_MS,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: Object.assign({}, process.env, {
+        CCR_PROBE_SRC: source,
+        CCR_PROBE_FLAGS: flags,
+        CCR_PROBE_BUDGET: String(PROBE_TIMEOUT_MS),
+      }),
       // One child PER PATTERN, and load() runs in the proxy, the lifecycle
       // hook, both residue tools and every CLI. Without windowsHide that is a
       // console window per pattern per process -- the flashing windows the
@@ -151,10 +184,21 @@ function isPatternSafe(source, flags) {
     });
     return { ok: true };
   } catch (e) {
+    // Killed by the backstop: the regex never returned at all.
     if (e.killed || e.code === 'ETIMEDOUT' || e.signal) {
       return {
         ok: false,
-        why: `pattern exceeded ${PROBE_TIMEOUT_MS}ms on adversarial input: catastrophic backtracking`,
+        why: `pattern did not return within ${HANG_TIMEOUT_MS}ms on adversarial input: catastrophic backtracking`,
+      };
+    }
+    // Exit 2 is our own signal: the child ran fine, the MATCHING was slow.
+    // Reported with the measured time, because "your regex took 1,400ms" is
+    // actionable in a way that "rejected" is not.
+    if (e.status === 2) {
+      const ms = (e.stdout || '').toString().trim() || '?';
+      return {
+        ok: false,
+        why: `pattern took ${ms}ms on adversarial input (budget ${PROBE_TIMEOUT_MS}ms): catastrophic backtracking`,
       };
     }
     return { ok: false, why: e.message };

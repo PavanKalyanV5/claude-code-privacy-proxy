@@ -65,3 +65,30 @@ test('the shipped example patterns all pass the screen', () => {
     assert.strictEqual(v.ok, true, pat.name + ' would be disabled at load: ' + (v.why || ''));
   }
 });
+
+test('a linear pattern survives a machine too slow to start a process quickly', () => {
+  // The screen used to budget 500ms for the whole probe CHILD, so node's own
+  // startup (74-153ms idle, far more under load) counted against the regex.
+  // On a loaded CI runner a linear pattern ran out of budget, was reported
+  // as catastrophic, and was silently disabled -- which is not a flaky test
+  // but a redaction failure: that category stops being redacted, on exactly
+  // the machines most likely to be busy.
+  //
+  // The budget is now measured inside the child, around the matching only.
+  // This asserts the SHAPE of that fix rather than trying to reproduce load:
+  // a hang must be reported as a hang, and slowness as a measured time.
+  const { isPatternSafe } = require('../rules');
+  // Assembled from parts. Written as one literal, the `\.` is eaten twice
+  // over -- once by a shell heredoc and once by a JS string literal -- which
+  // is the same class of bug this file documents, and it silently changes
+  // the pattern under test from "a literal dot" to "any character".
+  const DOT = '\\' + '.';
+  const linear = '(?<=(?:github|gitlab)' + DOT + '(?:com|org)[/:][A-Za-z0-9._-]{1,64}/)[A-Za-z0-9._-]+';
+  assert.strictEqual(isPatternSafe(linear, 'g').ok, true);
+
+  const evil = isPatternSafe('^(a+)+$', 'g');
+  assert.strictEqual(evil.ok, false);
+  // The message must say WHICH failure it was. "rejected" alone sends
+  // someone off to rewrite a regex that may not be the problem.
+  assert.match(evil.why, /did not return within \d+ms|took \d+ms/);
+});
