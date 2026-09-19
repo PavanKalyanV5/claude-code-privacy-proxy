@@ -1,5 +1,7 @@
 # claude-code-privacy-proxy
 
+![A local proxy that strips personal data, machine metadata and location fingerprints out of Claude Code's requests. 41,906 personal values found on disk reduced to 220 after one scrub pass. Nine features shown: reversible redaction, caching survives, no stored PII map, 20 secret patterns, fail closed, cleans what leaked, auditable, self-supervising, honest by design. 491 tests, 0 dependencies, no TLS interception, no CA to install, MIT licensed](docs/images/cover.png)
+
 A local proxy that strips your personal data, machine metadata and location
 fingerprints out of Claude Code's API requests — and optionally masks your
 source IP — **without breaking any tool.**

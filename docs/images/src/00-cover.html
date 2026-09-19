@@ -1,0 +1,105 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --fg:#e6edf3; --dim:#8b949e;
+          --red:#f85149; --green:#3fb950; --blue:#58a6ff; --amber:#d29922; --purple:#bc8cff; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { width:1200px; height:630px; background:var(--bg); color:var(--fg);
+         font:15px/1.4 -apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden;
+         display:flex; flex-direction:column; padding:42px 52px;
+         background-image:radial-gradient(900px 400px at 88% -8%, rgba(88,166,255,.10), transparent 60%); }
+
+  .top { display:flex; align-items:flex-start; justify-content:space-between; gap:30px; }
+  h1 { font-size:41px; line-height:1.1; letter-spacing:-.018em; font-weight:700; max-width:720px; }
+  h1 .hl { color:var(--blue); }
+  .tag { margin-top:13px; font-size:17px; color:var(--dim); max-width:690px; line-height:1.4; }
+
+  .stat { flex:0 0 auto; text-align:right; padding-left:26px; border-left:1px solid var(--line); }
+  .stat .n { font-size:37px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  .stat .n .was { color:var(--red); }
+  .stat .n .arr { color:var(--dim); font-weight:400; margin:0 7px; }
+  .stat .n .now { color:var(--green); }
+  .stat .cap { font-size:12.5px; color:var(--dim); margin-top:5px; }
+
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:11px; margin-top:26px; }
+  .f { background:var(--card); border:1px solid var(--line); border-radius:9px; padding:12px 14px; }
+  .f .h { font-size:13.5px; font-weight:600; margin-bottom:3px; display:flex; align-items:center; gap:7px; }
+  .f .d { font-size:12px; color:var(--dim); line-height:1.38; }
+  .dot { width:7px; height:7px; border-radius:50%; flex:0 0 auto; }
+  .b { background:var(--blue); } .g { background:var(--green); } .a { background:var(--amber); }
+  .p { background:var(--purple); } .r { background:var(--red); }
+
+  .foot { margin-top:auto; display:flex; align-items:center; justify-content:space-between;
+          padding-top:20px; border-top:1px solid var(--line); }
+  .badges { display:flex; gap:9px; flex-wrap:wrap; }
+  .badge { border:1px solid var(--line); border-radius:20px; padding:5px 13px; font-size:12.5px; color:var(--dim); }
+  .badge b { color:var(--fg); font-weight:600; }
+  .badge.ok { border-color:rgba(63,185,80,.45); }
+  .badge.ok b { color:var(--green); }
+  .repo { font-family:"Cascadia Code",Consolas,monospace; font-size:14px; color:var(--blue); }
+</style>
+
+<div class="top">
+  <div>
+    <h1>Your AI assistant is sending<br>more than <span class="hl">you think</span>.</h1>
+    <div class="tag">A local proxy that strips personal data, machine metadata and
+      location fingerprints out of Claude&nbsp;Code's requests — before they leave
+      your machine, without breaking a single tool.</div>
+  </div>
+  <div class="stat">
+    <div class="n"><span class="was">41,906</span><span class="arr">→</span><span class="now">220</span></div>
+    <div class="cap">personal values found on disk,<br>after one scrub pass</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="f">
+    <div class="h"><span class="dot b"></span>Redact, reversibly</div>
+    <div class="d">Model sees labels. Your Edit, Read and Bash tools receive the real values.</div>
+  </div>
+  <div class="f">
+    <div class="h"><span class="dot b"></span>Caching survives</div>
+    <div class="d">Deterministic HMAC labels, so the prompt prefix is stable and your bill does not move.</div>
+  </div>
+  <div class="f">
+    <div class="h"><span class="dot b"></span>No stored PII map</div>
+    <div class="d">Resolution is derived, not looked up. There is no database of your data to protect.</div>
+  </div>
+
+  <div class="f">
+    <div class="h"><span class="dot g"></span>20 secret patterns</div>
+    <div class="d">AWS, GitHub, OpenAI, Stripe, JWTs, private keys, DB URLs — each false-positive tested.</div>
+  </div>
+  <div class="f">
+    <div class="h"><span class="dot a"></span>Fail closed</div>
+    <div class="d">If it cannot redact or mask, the request is refused. An outage, never a silent leak.</div>
+  </div>
+  <div class="f">
+    <div class="h"><span class="dot p"></span>Cleans what leaked</div>
+    <div class="d">Transcripts written before you installed it are scrubbed with the same key.</div>
+  </div>
+
+  <div class="f">
+    <div class="h"><span class="dot r"></span>Auditable</div>
+    <div class="d">Every pass recorded: per-file manifests, configurable retention, anomaly signals.</div>
+  </div>
+  <div class="f">
+    <div class="h"><span class="dot g"></span>Self-supervising</div>
+    <div class="d">Starts at logon, restarts within 5 minutes of a crash. No console windows.</div>
+  </div>
+  <div class="f">
+    <div class="h"><span class="dot b"></span>Honest by design</div>
+    <div class="d">Anything unverifiable reports as NOT protected. Never "probably fine".</div>
+  </div>
+</div>
+
+<div class="foot">
+  <div class="badges">
+    <span class="badge ok"><b>491</b> tests</span>
+    <span class="badge ok"><b>0</b> dependencies</span>
+    <span class="badge">no TLS interception</span>
+    <span class="badge">no CA to install</span>
+    <span class="badge"><b>MIT</b> · open source</span>
+  </div>
+  <div class="repo">claude-code-privacy-proxy</div>
+</div>

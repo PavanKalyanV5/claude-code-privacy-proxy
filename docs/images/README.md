@@ -10,6 +10,7 @@ node docs/images/src/serve.js        # serves them on 127.0.0.1:8791
 
 | Image | Answers |
 |---|---|
+| `cover.png` | The one-glance summary — 1200x630, the standard social card size |
 | `flow.png` | What leaves the machine, and what comes back |
 | `architecture.png` | How the five mechanisms keep it running |
 | `failure-modes.png` | The bugs, and the one shape they share |
