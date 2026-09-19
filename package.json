@@ -1,6 +1,6 @@
 {
   "name": "claude-code-privacy-proxy",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "A local redacting proxy for Claude Code. Strips personal data, machine metadata and location fingerprints out of API requests, and optionally masks your source IP — without breaking any tool.",
   "license": "MIT",
   "keywords": [

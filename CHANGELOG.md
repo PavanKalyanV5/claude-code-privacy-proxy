@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.2 — 2026-09-19
+
+### Fixes
+
+- **rules**: stop compiling untrusted patterns in the parent process (30e13a7)
+
 ## v1.1.1 — 2026-09-19
 
 ### Fixes
