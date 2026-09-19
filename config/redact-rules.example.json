@@ -1,0 +1,125 @@
+{
+  "_comment": "TEMPLATE, tracked in git. Copy to redact-rules.json and put YOUR details there. This file deliberately carries fake test values so the test suite has a working config; redact-rules.json is gitignored, is owned by you alone, and no task in any plan may read or write it. Editing your live config invalidates the proxy's label cache, which costs exactly one prompt-cache miss.",
+
+  "_literals_comment": "Exact strings, matched case-insensitively and word-bounded. Your name and its variants, every email, your address as you write it, phone numbers, usernames and handles, employer and client names. Minimum 3 characters. A literal with no natural word boundary (an address fragment, a handle inside a URL) can opt out with { \"value\": \"...\", \"boundary\": false }.",
+  "literals": [
+    "Jane Q. Testerson",
+    "Jane",
+    "Testerson",
+    "janeqtest@gmail.com",
+    "+1-123-456-7890"
+  ],
+
+  "_patterns_comment": "Regexes for whole categories, to catch what you did not list. Each is screened for catastrophic backtracking at load time; a pattern that fails the screen is disabled with a warning rather than allowed to hang the proxy.",
+  "patterns": [
+    {
+      "name": "email",
+      "regex": "[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\\.[A-Za-z]{2,24}",
+      "flags": "gi"
+    },
+    {
+      "_comment": "Requires real separators and rejects digit/dot neighbours, so it does not eat IDs, timestamps, version strings, hex or IP addresses.",
+      "name": "phone",
+      "regex": "(?<![\\d.])(?:\\+\\d{1,3}[ .-]?)?(?:\\(\\d{3}\\)\\s?|\\d{3}[ .-])\\d{3}[ .-]\\d{4}(?![\\d.])",
+      "flags": "g"
+    },
+    {
+      "_comment": "Git remote org name. Lookbehind anchors it to a known forge host so it cannot fire on arbitrary text. Redacted rather than normalized because the model may need to use the real name in a command, and a label resolves back for local tools.",
+      "name": "git-org",
+      "regex": "(?<=(?:github|gitlab|bitbucket)\\.(?:com|org)[/:])[A-Za-z0-9._-]+",
+      "flags": "g"
+    },
+    {
+      "_comment": "Git remote repository name, anchored the same way.",
+      "name": "git-repo",
+      "regex": "(?<=(?:github|gitlab|bitbucket)\\.(?:com|org)[/:][A-Za-z0-9._-]{1,64}/)[A-Za-z0-9._-]+",
+      "flags": "g"
+    },
+    {
+      "_comment": "PUBLIC IPv4 only. Private, loopback and link-local ranges are deliberately excluded: they reveal nothing about where you are, and redacting 127.0.0.1 or 192.168.1.x would stop the model reasoning about your own dev setup for no privacy gain. Octets are range-bounded so it does not eat 1.2.3.400. A four-part version string is an accepted false positive.",
+      "name": "ip",
+      "regex": "(?<![\\d.])(?!10\\.)(?!127\\.)(?!0\\.)(?!169\\.254\\.)(?!192\\.168\\.)(?!172\\.(?:1[6-9]|2\\d|3[01])\\.)(?!255\\.)(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?![\\d.])",
+      "flags": "g"
+    },
+    {
+      "_comment": "IPv6, in one of exactly two forms: all eight groups, or a '::' with at least two groups before it. Both conditions exist to exclude look-alikes, and a loose version of this pattern DID eat them in testing: a time like '14:22:05' is three colon-separated hex-ish groups, a MAC address is six, and a C++ name like 'cafe::babe' is one group around a '::'. Redacting clock times would corrupt every log line. Loopback '::1' is excluded for the same reason 127.0.0.1 is.",
+      "name": "ipv6",
+      "regex": "(?<![\\w:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){2,7}:(?:[0-9a-f]{1,4}(?::[0-9a-f]{1,4})*)?)(?![\\w:])",
+      "flags": "gi"
+    },
+    {
+      "_comment": "MAC address: a per-machine hardware identifier that nothing needs to round-trip.",
+      "name": "mac",
+      "regex": "(?<![\\w:-])(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}(?![\\w:-])",
+      "flags": "gi"
+    }
+  ],
+
+  "_aliases_comment": "Bidirectional: redacted outbound, restored inbound, so tools still receive working paths. Only for identifiers that MUST round-trip — the OS username, the hostname, and project roots naming a client or employer. Use double backslashes for Windows paths. KEEP THIS BLOCK GENERIC: this file is tracked in git, so your real username and hostname belong in redact-rules.json, not here.",
+  "aliases": [
+    { "real": "C:\\Users\\YOURNAME", "alias": "C:\\Users\\anon" },
+    { "real": "YOUR-HOSTNAME", "alias": "MACHINE-A1" }
+  ],
+
+  "_remoteTools_comment": "Tool-name prefixes treated as REMOTE/untrusted. These receive neither real paths (the username alias is kept) nor real personal data (PII labels are kept). Everything not listed — including local MCP servers — gets full unredacted access, because a local server runs as you and could read your files directly anyway. Supersedes the older aliasReverseExclude key, which is still honoured.",
+  "remoteTools": ["mcp__zen__"],
+
+  "_normalize_comment": "One-way rewrites with no label and no reverse, for fingerprints nothing needs to round-trip. `timezone` converts any datetime carrying an offset to UTC and blanks bare offsets, because a +0530 in git log output pins your region. `rewrites` are regex replacements supporting $1..$9.",
+  "normalize": {
+    "timezone": true,
+    "rewrites": [
+      {
+        "name": "os-build",
+        "regex": "Windows (\\d+)(?: [A-Za-z]+)? \\d+\\.\\d+\\.\\d+",
+        "flags": "g",
+        "replace": "Windows $1"
+      },
+      {
+        "_comment": "IANA timezone names pin your region as precisely as a numeric offset does, and `timezone: true` above only rewrites offsets. Normalized rather than labelled because nothing needs the original back.",
+        "name": "tz-name",
+        "regex": "\\b(?:Africa|America|Antarctica|Arctic|Asia|Atlantic|Australia|Europe|Indian|Pacific)/[A-Za-z_]+(?:/[A-Za-z_]+)?\\b",
+        "flags": "g",
+        "replace": "UTC"
+      },
+      {
+        "_comment": "Regional locale, as it appears in LANG/LC_ALL and similar. A 'pt_PT' or 'en_IN' names the country outright.",
+        "name": "locale",
+        "regex": "\\b[a-z]{2}_[A-Z]{2}(?=\\.(?:UTF-8|utf8)|\\b)",
+        "flags": "g",
+        "replace": "en_US"
+      }
+    ]
+  },
+
+  "_deviceId_comment": "metadata.user_id carries a stable SHA-256 machine fingerprint. The account is already identified by your API key, so this adds a persistent MACHINE identity on top. OFF by default because, unlike everything else here, changing it has account-level rather than local consequences. \"stable\" = a different but consistent value (hides the real fingerprint without looking like a new machine each session). \"session\" = random per proxy start (maximum unlinkability, highest chance of tripping abuse checks).",
+  "deviceId": { "mode": "off" },
+
+  "_egress_comment": "Routes the upstream API connection through a SOCKS5 or HTTP CONNECT proxy so the API sees the proxy's address instead of yours. This is the only part of the system that hides your IP and approximate location; everything else above hides content. FAIL CLOSED BY DESIGN: if no listed proxy can be reached, requests are REFUSED rather than sent from your real address, so a dead proxy shows up as connection errors instead of silent exposure. List several — free proxies vanish without warning and are tried in order. Your API key is inside the TLS session and is never visible to the proxy operator; what they can see is the destination host, timing and byte volume. Certificate verification stays on, so a proxy attempting to intercept TLS is refused rather than trusted.",
+  "egress": {
+    "_mode_comment": "\"off\" never tunnels. \"on\" always tunnels. \"auto\" tunnels only when you look exposed, decided by comparing the country a DIRECT connection appears to come from against homeCountry below -- so when your VPN is up the tunnel stays out of the way, and when it drops the proxies take over. Re-decided every 15 minutes, so a VPN dropping mid-session engages them without a restart. Until the first probe answers, auto tunnels: assuming you are safe is the assumption that leaks.",
+    "mode": "off",
+
+    "_homeCountry_comment": "Two-letter code for where you actually are, used ONLY to tell exposed from masked in auto mode. Required when mode is \"auto\". This does not by itself stop proxies in that country being used -- see pool.excludeCountries, kept separate so the two decisions stay independent.",
+    "homeCountry": "",
+
+    "urls": [],
+    "_urls_example": ["socks5://127.0.0.1:1080", "http://user:pass@proxy.example:3128"],
+    "_onFailure_comment": "What happens when NO listed proxy can be reached. \"refuse\" (default) blocks the request, so an outage shows up as connection errors and you are never unmasked without knowing. \"direct\" sends it from your real IP instead, so a dead proxy cannot lock you out of your own tooling -- the tradeoff is that an outage becomes exposure. \"direct\" is never silent: every fallback is logged and the session-start notifier reports it until you change the setting.",
+    "onFailure": "refuse",
+    "_ipCheck_comment": "Verifies masking by asking an echo service what address it sees, through the tunnel and directly, and comparing. Set false to skip the third-party call; you then lose automatic 'masking confirmed' reporting.",
+    "ipCheck": true,
+    "_ipCheckUrl_comment": "Must be https. An endpoint returning JSON with a \"country\" field (api.country.is does) enables auto mode and country exclusion; a plain-text endpoint like api.ipify.org gives the address only, and then auto mode cannot decide and will tunnel.",
+    "ipCheckUrl": "https://api.country.is",
+    "timeoutMs": 15000,
+
+    "_pool_comment": "Fetches free proxies from public lists and verifies each one actually masks before using it: a candidate must complete a certificate-verified TLS connection through the tunnel AND report an exit address different from your direct one. A reachable proxy that forwards your real IP passes a liveness check and fails this. Candidates are tested with bounded concurrency and testing stops as soon as `want` have verified, because these lists hold thousands of entries with a low hit rate. Anything in `urls` above is preferred over anything scraped from the internet.",
+    "pool": {
+      "enabled": false,
+      "want": 5,
+      "_excludeCountries_comment": "Two-letter codes to refuse, checked against the exit country OBSERVED after connecting -- never against the country a source list claims, because those labels are frequently wrong and trusting them would route you through a country you excluded. A proxy whose country cannot be determined is refused whenever this list is non-empty. Putting your own country here is usually what you want: a proxy inside it hides your address but not your location.",
+      "excludeCountries": []
+    }
+  },
+
+  "proxy": { "port": 47113 }
+}

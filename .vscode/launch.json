@@ -1,0 +1,322 @@
+{
+  "version": "0.2.0",
+  "_generated": "by `node src/cli/vscode-config.js` from package.json scriptsInfo. Edit the descriptions there, not here.",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Start here: help",
+      "program": "${workspaceFolder}/src/cli/help.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Running it: start",
+      "program": "${workspaceFolder}/src/start.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Running it: stop  [CHANGES THINGS]",
+      "program": "${workspaceFolder}/src/lifecycle.js",
+      "args": [
+        "shutdown"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Proving it works: test",
+      "program": "${workspaceFolder}/--test",
+      "args": [
+        "src/test/*.test.js"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Proving it works: verify",
+      "program": "${workspaceFolder}/src/verify-protection.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Running it: status",
+      "program": "${workspaceFolder}/src/cli/status.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "On-disk residue: scan",
+      "program": "${workspaceFolder}/src/scan-residue.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "On-disk residue: scrub",
+      "program": "${workspaceFolder}/src/scrub-residue.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "On-disk residue: scrub:apply  [CHANGES THINGS]",
+      "program": "${workspaceFolder}/src/scrub-residue.js",
+      "args": [
+        "--write"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "On-disk residue: verify:scrub",
+      "program": "${workspaceFolder}/src/verify-scrub.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "IP masking: providers",
+      "program": "${workspaceFolder}/src/cli/providers.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Running it: dash",
+      "program": "${workspaceFolder}/src/cli/dash.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Keeping it running: supervise",
+      "program": "${workspaceFolder}/src/supervise.js",
+      "args": [
+        "status"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Keeping it running: supervise:install  [CHANGES THINGS]",
+      "program": "${workspaceFolder}/src/supervise.js",
+      "args": [
+        "install"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Keeping it running: supervise:uninstall  [CHANGES THINGS]",
+      "program": "${workspaceFolder}/src/supervise.js",
+      "args": [
+        "uninstall"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Keeping it running: supervise:repair  [CHANGES THINGS]",
+      "program": "${workspaceFolder}/src/supervise.js",
+      "args": [
+        "repair"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "IP masking: egress",
+      "program": "${workspaceFolder}/src/setup-egress.js",
+      "args": [
+        "detect"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "IP masking: egress:warp  [CHANGES THINGS]",
+      "program": "${workspaceFolder}/src/setup-egress.js",
+      "args": [
+        "warp"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Publishing safely: pii:report  [CHANGES THINGS]",
+      "program": "${workspaceFolder}/src/pii-report.js",
+      "args": [
+        ".",
+        "--out",
+        "PII-AUDIT.txt"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Publishing safely: publish:check",
+      "program": "${workspaceFolder}/src/pii-report.js",
+      "args": [
+        "--tracked",
+        "--out",
+        "PII-AUDIT-TRACKED.txt",
+        "--fail-on",
+        "identity,personal"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Start here: doctor",
+      "program": "${workspaceFolder}/src/doctor.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Rules and patterns: patterns:adopt  [CHANGES THINGS]",
+      "program": "${workspaceFolder}/src/adopt-patterns.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Proving it works: audit:rules",
+      "program": "${workspaceFolder}/src/audit-rules.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Start here: vscode",
+      "program": "${workspaceFolder}/src/cli/vscode-config.js",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ]
+}

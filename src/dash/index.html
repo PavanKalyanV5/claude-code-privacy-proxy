@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<!-- An inline data: icon, so the browser never requests /favicon.ico. That
+     request 404s, which is harmless but puts a red error in the console of a
+     tool whose whole job is telling you when something is wrong -- and a
+     console with a permanent error in it is one nobody reads. Inline also
+     means no extra route to authenticate. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230d1117'/%3E%3Cpath d='M8 2.5l4.2 1.6v3.6c0 2.6-1.8 4.6-4.2 5.8-2.4-1.2-4.2-3.2-4.2-5.8V4.1z' fill='%2358a6ff'/%3E%3C/svg%3E">
+<title>Redaction proxy — audit dashboard</title>
+<link rel="stylesheet" href="/_dash/app.css?t=__DASH_TOKEN__">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">redaction proxy <span class="dim">/ audit dashboard</span></div>
+  <div id="verdict" class="verdict verdict-unknown" role="status" aria-live="polite">checking&hellip;</div>
+</header>
+
+<nav class="tabs" aria-label="Dashboard sections">
+  <a href="#overview" data-tab="overview">Overview</a>
+  <a href="#logs" data-tab="logs">Logs</a>
+  <a href="#rules" data-tab="rules">PII rules</a>
+  <a href="#egress" data-tab="egress">Egress</a>
+  <a href="#residue" data-tab="residue">Residue</a>
+</nav>
+
+<main id="app">
+
+  <section id="panel-overview" class="panel">
+    <!-- Signals first: if something needs attention, it should be the first
+         thing on the page, not a row in a table further down. -->
+    <div id="signals"></div>
+    <div class="cards" id="overview-cards">
+      <div class="card">
+        <h3>Proxy</h3>
+        <dl>
+          <div><dt>PID</dt><dd class="num" data-f="pid">&mdash;</dd></div>
+          <div><dt>Port</dt><dd class="num" data-f="port">&mdash;</dd></div>
+          <div><dt>Uptime</dt><dd class="num" data-f="uptime">&mdash;</dd></div>
+        </dl>
+      </div>
+      <div class="card">
+        <h3>Redaction rules</h3>
+        <dl>
+          <div><dt>Literals</dt><dd class="num" data-f="literals">&mdash;</dd></div>
+          <div><dt>Patterns</dt><dd class="num" data-f="patterns">&mdash;</dd></div>
+          <div><dt>Aliases</dt><dd class="num" data-f="aliases">&mdash;</dd></div>
+          <div><dt>Normalize rewrites</dt><dd class="num" data-f="rewrites">&mdash;</dd></div>
+          <div><dt>Timezone normalize</dt><dd data-f="timezone">&mdash;</dd></div>
+        </dl>
+      </div>
+      <div class="card">
+        <h3>Egress / masking</h3>
+        <dl>
+          <div><dt>State</dt><dd data-f="egress-state">&mdash;</dd></div>
+          <div><dt>Exit country</dt><dd class="num" data-f="egress-country">&mdash;</dd></div>
+          <div><dt>Decision reason</dt><dd data-f="egress-reason">&mdash;</dd></div>
+          <div><dt>Failures / fell back direct</dt><dd class="num" data-f="egress-fails">&mdash;</dd></div>
+        </dl>
+      </div>
+      <div class="card">
+        <h3>Residue scrub</h3>
+        <dl>
+          <div><dt>Last run</dt><dd data-f="scrub-when">&mdash;</dd></div>
+          <div><dt>Files rewritten</dt><dd class="num" data-f="scrub-files">&mdash;</dd></div>
+          <div><dt>Verify failures</dt><dd class="num" data-f="scrub-verify">&mdash;</dd></div>
+        </dl>
+      </div>
+    </div>
+    <p class="dim small">Live via server-sent events. This panel only ever reports what it can verify right now &mdash;
+      anything it cannot confirm is treated as NOT PROTECTED, never assumed safe.</p>
+  </section>
+
+  <section id="panel-logs" class="panel" hidden>
+    <div class="toolbar">
+      <label>Level
+        <select id="log-level">
+          <option value="all">all</option>
+          <option value="warn">warn+error</option>
+        </select>
+      </label>
+      <label>Search <input type="text" id="log-search" placeholder="filter text&hellip;"></label>
+      <label class="checkbox"><input type="checkbox" id="log-follow" checked> auto-follow</label>
+      <label>Limit
+        <select id="log-limit">
+          <option value="200" selected>200</option>
+          <option value="500">500</option>
+          <option value="1000">1000</option>
+          <option value="2000">2000</option>
+        </select>
+      </label>
+      <button id="log-refresh" type="button">Refresh now</button>
+      <span class="dim small" id="log-total"></span>
+    </div>
+    <div id="log-lines" class="log-lines" tabindex="0"></div>
+  </section>
+
+  <section id="panel-rules" class="panel" hidden>
+    <div class="toolbar">
+      <button id="rules-load" type="button">Load rules for editing</button>
+      <button id="rules-save" type="button" disabled>Save</button>
+      <span class="dim small" id="rules-status"></span>
+    </div>
+    <div id="rules-errors" class="errors" hidden></div>
+    <div id="rules-editor"></div>
+  </section>
+
+  <section id="panel-egress" class="panel" hidden>
+    <div class="cards" id="egress-cards"></div>
+    <div class="toolbar">
+      <button id="egress-on" type="button">Tunnel ON</button>
+      <button id="egress-off" type="button">Tunnel OFF</button>
+      <button id="egress-check" type="button">Check now</button>
+    </div>
+    <pre id="egress-result" class="result"></pre>
+  </section>
+
+  <section id="panel-residue" class="panel" hidden>
+    <div class="cards" id="residue-cards"></div>
+    <div class="toolbar">
+      <button id="residue-scan" type="button">Scan now</button>
+      <button id="residue-refresh" type="button">Refresh history</button>
+    </div>
+    <pre id="residue-result" class="result"></pre>
+
+    <h3 class="section-title">Job history</h3>
+    <p class="hint">Every pass of the job that rewrites real values out of your
+      transcripts. Select a run to read the log it produced.</p>
+    <div id="residue-jobs"></div>
+    <pre id="residue-joblog" class="result" hidden></pre>
+
+    <h3 class="section-title">Retention activity</h3>
+    <p class="hint">Every housekeeping pass, including ones with nothing to
+      remove — those are the evidence it is still running.</p>
+    <div id="retention-history"></div>
+
+    <h3 class="section-title">Log retention</h3>
+    <p class="hint">What this tool keeps on disk, and for how long. Configure
+      under <code>retention</code> in the PII rules tab. Older records are
+      removed automatically once an hour.</p>
+    <div id="retention-table"></div>
+    <div class="toolbar">
+      <button id="retention-run" type="button">Apply retention now</button>
+    </div>
+    <pre id="retention-result" class="result" hidden></pre>
+  </section>
+
+</main>
+
+<script>window.DASH_TOKEN = "__DASH_TOKEN__";</script>
+<script src="/_dash/app.js?t=__DASH_TOKEN__"></script>
+</body>
+</html>

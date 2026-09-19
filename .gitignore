@@ -1,0 +1,47 @@
+# Your live config. This holds your REAL personal data and must never be
+# committed. config/redact-rules.example.json is the template to copy.
+redact-rules.json
+config/redact-rules.json
+archive/legacy-hooks/redact-rules.json
+
+# Proxy state, all of it local and all of it derived.
+*.log
+redact-cache.enc
+status.json
+proxy-pool.json
+
+# Anything the residue tooling writes while working.
+residue-backup-*/
+live-pool-cache.json
+validate-pool-cache.json
+e2e-pool-cache.json
+e2e-status.json
+
+# Development ledgers, probes and one-off diagnostics. Useful while building,
+# noise in a published repository, and some of them carry machine-specific
+# paths.
+.superpowers/
+
+# Editor and OS
+node_modules/
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+
+# Stray local identifiers
+_user-id.txt
+
+# PII audit reports contain real values in clear text. Never commit one.
+PII-AUDIT*.txt
+LITERAL-AUDIT*.txt
+# Catch-all: any audit output, whatever it gets named. These files exist to
+# show real values to a human, so the ignore rule has to be wider than the
+# filenames the tools happen to use today -- LITERAL-AUDIT.txt was created by
+# a --detail flag and matched none of the specific patterns above.
+*-AUDIT*.txt
+*audit-detail*.txt
+
+# Legacy hook-based approach, superseded by the proxy. Kept locally for
+# reference, not part of the published solution.
+archive/
+.u2

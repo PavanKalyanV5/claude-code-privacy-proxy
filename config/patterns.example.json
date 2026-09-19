@@ -1,0 +1,145 @@
+{
+  "_comment": "Optional extra patterns, each validated against the catastrophic-backtracking screen and tested for false positives. Copy the entries you want into the \"patterns\" array of your redact-rules.json. Category names are free-form and appear in the label, e.g. [PII:secret:a1b2...].",
+  "patterns": [
+    {
+      "name": "aws-access-key",
+      "category": "secret",
+      "regex": "\\b(?:AKIA|ASIA|AROA|AIDA)[0-9A-Z]{16}\\b",
+      "flags": "g",
+      "_why": "AWS access key IDs (AKIA/ASIA/AROA/AIDA + 16 chars)."
+    },
+    {
+      "name": "github-token",
+      "category": "secret",
+      "regex": "\\bgh[pousr]_[A-Za-z0-9]{36,255}\\b",
+      "flags": "g",
+      "_why": "GitHub personal access, OAuth and server tokens."
+    },
+    {
+      "name": "slack-token",
+      "category": "secret",
+      "regex": "\\bxox[abposr]-[A-Za-z0-9-]{10,72}\\b",
+      "flags": "g",
+      "_why": "Slack bot, user and app tokens."
+    },
+    {
+      "name": "private-key-block",
+      "category": "secret",
+      "regex": "-----BEGIN (?:RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----",
+      "flags": "g",
+      "_why": "The header line of any private key block."
+    },
+    {
+      "name": "jwt",
+      "category": "secret",
+      "regex": "\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\b",
+      "flags": "g",
+      "_why": "JSON Web Tokens."
+    },
+    {
+      "name": "bearer-token",
+      "category": "secret",
+      "regex": "\\b[Bb]earer\\s+[A-Za-z0-9._~+/-]{20,}=*",
+      "flags": "g",
+      "_why": "Authorization: Bearer headers pasted into prompts or tool output."
+    },
+    {
+      "name": "generic-api-key-assignment",
+      "category": "secret",
+      "regex": "\\b(?:api[_-]?key|secret[_-]?key|access[_-]?token|client[_-]?secret)\\s*[=:]\\s*[\"']?[A-Za-z0-9_\\-]{16,}[\"']?",
+      "flags": "gi",
+      "_why": "api_key/secret_key/access_token/client_secret assignments, any provider. Needs 16+ chars so placeholders survive."
+    },
+    {
+      "name": "openai-key",
+      "category": "secret",
+      "regex": "\\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\\b",
+      "flags": "g",
+      "_why": "OpenAI secret keys, including sk-proj- and sk-svcacct-."
+    },
+    {
+      "name": "anthropic-key",
+      "category": "secret",
+      "regex": "\\bsk-ant-[A-Za-z0-9_-]{20,}\\b",
+      "flags": "g",
+      "_why": "Anthropic API keys."
+    },
+    {
+      "name": "stripe-key",
+      "category": "secret",
+      "regex": "\\b[rsp]k_(?:live|test)_[A-Za-z0-9]{16,}\\b",
+      "flags": "g",
+      "_why": "Stripe secret, publishable and restricted keys, live or test."
+    },
+    {
+      "name": "google-api-key",
+      "category": "secret",
+      "regex": "\\bAIza[0-9A-Za-z_-]{35}\\b",
+      "flags": "g",
+      "_why": "Google and Firebase API keys."
+    },
+    {
+      "name": "sendgrid-key",
+      "category": "secret",
+      "regex": "\\bSG\\.[A-Za-z0-9_-]{16,}\\.[A-Za-z0-9_-]{16,}\\b",
+      "flags": "g",
+      "_why": "SendGrid API keys."
+    },
+    {
+      "name": "npm-token",
+      "category": "secret",
+      "regex": "\\bnpm_[A-Za-z0-9]{36}\\b",
+      "flags": "g",
+      "_why": "npm automation and publish tokens."
+    },
+    {
+      "name": "huggingface-token",
+      "category": "secret",
+      "regex": "\\bhf_[A-Za-z0-9]{30,}\\b",
+      "flags": "g",
+      "_why": "Hugging Face access tokens."
+    },
+    {
+      "name": "connection-string-password",
+      "category": "secret",
+      "regex": "\\b(?:postgres(?:ql)?|mysql|mongodb(?:\\+srv)?|redis|amqp)://[^\\s:@/]{1,64}:[^\\s:@/]{1,128}@",
+      "flags": "g",
+      "_why": "Database URLs with an inline password. Matches the credentials only, so the host stays readable."
+    },
+    {
+      "name": "credit-card",
+      "category": "financial",
+      "regex": "\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b",
+      "flags": "g",
+      "_why": "Visa, Mastercard, Amex and Discover, by prefix and length."
+    },
+    {
+      "name": "iban",
+      "category": "financial",
+      "regex": "\\b[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}\\b",
+      "flags": "g",
+      "_why": "International bank account numbers."
+    },
+    {
+      "name": "india-aadhaar",
+      "category": "national-id",
+      "regex": "\\b[2-9][0-9]{3}[ -]?[0-9]{4}[ -]?[0-9]{4}\\b",
+      "flags": "g",
+      "_why": "Aadhaar numbers (12 digits, never starting 0 or 1)."
+    },
+    {
+      "name": "india-pan",
+      "category": "national-id",
+      "regex": "\\b[A-Z]{5}[0-9]{4}[A-Z]\\b",
+      "flags": "g",
+      "_why": "Indian Permanent Account Number."
+    },
+    {
+      "name": "us-ssn",
+      "category": "national-id",
+      "regex": "\\b(?!000|666|9[0-9]{2})[0-9]{3}-(?!00)[0-9]{2}-(?!0000)[0-9]{4}\\b",
+      "flags": "g",
+      "_why": "US Social Security numbers, excluding never-issued ranges."
+    }
+  ]
+}

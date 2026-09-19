@@ -1,0 +1,359 @@
+/* Dark, calm, high-density. System fonts only -- no CDN, no web fonts, this
+   page must render identically with the network turned off (which, on a
+   proxy dashboard, is a state the tool itself might cause). */
+
+:root {
+  --font-ui: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Consolas", "SF Mono", Menlo, monospace;
+
+  --bg: #0f1115;
+  --bg-raised: #161922;
+  --bg-card: #1a1e29;
+  --border: #2a2f3d;
+  --text: #d7dae1;
+  --text-dim: #8890a0;
+  --text-bright: #f2f4f8;
+
+  --green: #3ecf7e;
+  --green-bg: #10261b;
+  --amber: #e8b339;
+  --amber-bg: #2b2210;
+  --red: #f0546b;
+  --red-bg: #2b1218;
+  --blue: #5b9bf0;
+
+  --focus: #5b9bf0;
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.num, .mono, pre, code, .log-lines, dd.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: var(--blue); }
+
+button, select, input[type="text"] {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+button {
+  cursor: pointer;
+}
+button:hover { border-color: var(--blue); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.dim { color: var(--text-dim); }
+.small { font-size: 12px; }
+
+/* ---------------------------------------------------------------- topbar */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.brand { font-weight: 600; color: var(--text-bright); }
+
+.verdict {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.verdict-protected { background: var(--green-bg); color: var(--green); }
+.verdict-degraded { background: var(--amber-bg); color: var(--amber); }
+.verdict-exposed { background: var(--red-bg); color: var(--red); }
+.verdict-unknown { background: var(--bg-card); color: var(--text-dim); }
+
+/* ------------------------------------------------------------------ tabs */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs a {
+  display: inline-block;
+  padding: 8px 14px;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border: 1px solid transparent;
+}
+
+.tabs a:hover { color: var(--text); }
+
+.tabs a.active {
+  color: var(--text-bright);
+  background: var(--bg-card);
+  border-color: var(--border);
+  border-bottom-color: var(--bg-card);
+}
+
+main {
+  padding: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.panel[hidden] { display: none; }
+
+/* ----------------------------------------------------------------- cards */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.card h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.card dl { margin: 0; }
+.card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.card dl > div:last-child { border-bottom: none; }
+.card dt { color: var(--text-dim); }
+.card dd { margin: 0; color: var(--text-bright); text-align: right; }
+
+.status-ok { color: var(--green); }
+.status-warn { color: var(--amber); }
+.status-bad { color: var(--red); }
+
+/* -------------------------------------------------------------- toolbar */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.checkbox { flex-direction: row-reverse; }
+
+/* ------------------------------------------------------------------ logs */
+
+.log-lines {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 0;
+  height: 65vh;
+  overflow-y: auto;
+  font-size: 12.5px;
+}
+
+.log-line {
+  display: flex;
+  gap: 10px;
+  padding: 2px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.log-line:hover { background: rgba(255, 255, 255, 0.03); }
+
+.log-ts { color: var(--text-dim); flex: 0 0 auto; }
+.log-text { flex: 1 1 auto; }
+
+.log-line.level-warn .log-text { color: var(--amber); }
+.log-line.level-error .log-text { color: var(--red); }
+.log-line.level-info .log-text { color: var(--text); }
+
+/* --------------------------------------------------------------- editor */
+
+.errors {
+  background: var(--red-bg);
+  border: 1px solid var(--red);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  color: var(--red);
+  font-size: 13px;
+}
+.errors[hidden] { display: none; }
+
+.rules-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.rules-group h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text-bright);
+}
+
+.rules-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.rules-row input[type="text"] { flex: 1 1 auto; }
+.rules-row .reveal { flex: 0 0 auto; }
+.rules-row .remove { flex: 0 0 auto; }
+
+/* ------------------------------------------------------------------ misc */
+
+.result {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 2em;
+}
+
+/* ----------------------------------------------------------------- signals */
+
+.signal {
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  max-width: 78ch;
+}
+
+.signal-title { font-weight: 600; font-size: 13.5px; margin-bottom: 3px; }
+.signal-detail { font-size: 12.5px; color: var(--fg-dim); }
+/* The action is the point of the card, so it is visually distinct from the
+   description rather than trailing it as more prose. */
+.signal-action {
+  font-size: 12.5px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+}
+
+.signal-critical { border-left-color: var(--error, #ff6b6b); }
+.signal-critical .signal-title { color: var(--error, #ff6b6b); }
+.signal-warning { border-left-color: var(--warn, #e3b341); }
+.signal-warning .signal-title { color: var(--warn, #e3b341); }
+.signal-info { border-left-color: var(--accent, #58a6ff); }
+
+/* ------------------------------------------------- job history / retention */
+
+.section-title {
+  margin: 26px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.hint {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  color: var(--fg-dim);
+  max-width: 68ch;
+}
+
+table.jobs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+
+table.jobs th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--fg-dim);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 10px 6px 0;
+  white-space: nowrap;
+}
+
+table.jobs td {
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid var(--border);
+  /* Tabular figures so counts line up column-wise and a changed digit is
+     visible without reading the number. */
+  font-variant-numeric: tabular-nums;
+}
+
+table.jobs tr:last-child td { border-bottom: none; }
+
+/* A failed pass means real values are still on disk. It must not be
+   possible to skim past it in a list of otherwise-identical green rows. */
+tr.job-bad td { color: var(--error, #ff6b6b); }
+tr.job-bad td:nth-child(3) { font-weight: 700; }
+
+table.jobs button {
+  font-size: 11.5px;
+  padding: 2px 8px;
+}
+
+/* Respect reduced-motion: nothing here animates by default, but keep any
+   future transition/scroll-behavior from moving against the user's wishes. */
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}

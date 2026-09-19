@@ -1,0 +1,178 @@
+{
+  "name": "claude-code-privacy-proxy",
+  "version": "1.0.0",
+  "description": "A local redacting proxy for Claude Code. Strips personal data, machine metadata and location fingerprints out of API requests, and optionally masks your source IP — without breaking any tool.",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "privacy",
+    "redaction",
+    "pii",
+    "anonymity",
+    "proxy",
+    "socks5"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "//deps": "Zero runtime dependencies, deliberately. This process sits in front of every API request and handles personal data in plaintext; every dependency would be code with the same access, trusted on someone else's word. Node's stdlib is enough.",
+  "dependencies": {},
+  "devDependencies": {},
+  "main": "src/start.js",
+  "//scripts": "JSON has no comments and every key under `scripts` must be runnable, so the descriptions live in `scriptsInfo` below, keyed by the same name. `npm run help` renders them. Keep the two in step: `npm run help` prints a warning for any script missing a description.",
+  "scripts": {
+    "help": "node src/cli/help.js",
+    "start": "node src/start.js",
+    "stop": "node src/lifecycle.js shutdown",
+    "test": "node --test src/test/*.test.js",
+    "verify": "node src/verify-protection.js",
+    "status": "node src/cli/status.js",
+    "scan": "node src/scan-residue.js",
+    "scrub": "node src/scrub-residue.js",
+    "scrub:apply": "node src/scrub-residue.js --write",
+    "verify:scrub": "node src/verify-scrub.js",
+    "providers": "node src/cli/providers.js",
+    "dash": "node src/cli/dash.js",
+    "supervise": "node src/supervise.js status",
+    "supervise:install": "node src/supervise.js install",
+    "supervise:uninstall": "node src/supervise.js uninstall",
+    "supervise:repair": "node src/supervise.js repair",
+    "egress": "node src/setup-egress.js detect",
+    "egress:warp": "node src/setup-egress.js warp",
+    "pii:report": "node src/pii-report.js . --out PII-AUDIT.txt",
+    "publish:check": "node src/pii-report.js --tracked --out PII-AUDIT-TRACKED.txt --fail-on identity,personal",
+    "doctor": "node src/doctor.js",
+    "patterns:adopt": "node src/adopt-patterns.js",
+    "audit:rules": "node src/audit-rules.js",
+    "vscode": "node src/cli/vscode-config.js"
+  },
+  "scriptsInfo": {
+    "help": {
+      "group": "Start here",
+      "summary": "List every command with what it does and when to use it.",
+      "detail": "Reads this file, so it can never drift from the scripts it documents."
+    },
+    "doctor": {
+      "group": "Start here",
+      "summary": "Check the whole chain end to end and report what is NOT protected.",
+      "detail": "Walks config, routing, the running proxy, egress reachability, masking, crash recovery, logon start, the scrub job and retention, in the order a request travels them. Every other command reports on ONE component; this one exists because the worst failures live in the gaps between them. Each failure names the command that fixes it. Exits non-zero if anything fails, so it works in a pre-flight script. Output is verdicts and counts only, never a personal value."
+    },
+    "start": {
+      "group": "Running it",
+      "summary": "Start the proxy in the foreground.",
+      "detail": "Normally unnecessary: the SessionStart hook and the 5-minute watchdog start it for you. Run it directly when you need to SEE why it will not start, because the supervised path is detached and its output goes nowhere."
+    },
+    "stop": {
+      "group": "Running it",
+      "summary": "Stop the running proxy.",
+      "detail": "Takes the PID from /_health, so it can only ever stop a process currently answering as the proxy. Tells you if the watchdog is registered, because that will restart it within five minutes. Claude Code will get connection errors while it is down."
+    },
+    "status": {
+      "group": "Running it",
+      "summary": "Current protection state in one line.",
+      "detail": "Reads the status file the proxy publishes every 30 seconds. Cheap enough for a prompt or a status bar."
+    },
+    "dash": {
+      "group": "Running it",
+      "summary": "Print the dashboard URL, token included.",
+      "detail": "The token is regenerated every time the proxy starts, so re-run this after a restart. It is stored owner-only in ~/.claude/redaction/dash-token and deliberately never written to the log."
+    },
+    "verify": {
+      "group": "Proving it works",
+      "summary": "17 checks against your real config, including live masking.",
+      "detail": "Tests every literal in 20 adjacency shapes, checks alias safety, and takes a fresh measurement of whether your IP is masked right now. Prints verdicts and counts only -- never a value, never an address -- so the output is safe to paste anywhere."
+    },
+    "test": {
+      "group": "Proving it works",
+      "summary": "Run the full test suite. No network required.",
+      "detail": "Runs against fixtures only and never touches your real rules, key or transcripts."
+    },
+    "audit:rules": {
+      "group": "Proving it works",
+      "summary": "Test every literal in your rules across 14 adjacency shapes.",
+      "detail": "Answers the one question you cannot settle by reading the config: does each literal actually get redacted when it is quoted, bracketed, doubled, inside JSON, or in a path? Reports leaks by INDEX and category, never by value. Add --detail FILE for a local file that names them. Also flags the opposite risk: a literal short enough to match inside unrelated words."
+    },
+    "supervise": {
+      "group": "Keeping it running",
+      "summary": "Is anything watching the proxy?",
+      "detail": "Reports the logon entry and the 5-minute watchdog, including whether the watchdog is allowed to run on battery -- a scheduled task defaults to NOT running unplugged, which made an apparently healthy watchdog never fire once."
+    },
+    "supervise:install": {
+      "group": "Keeping it running",
+      "summary": "Start at logon, and repair a crashed proxy within 5 minutes.",
+      "detail": "Writes a Startup-folder launcher for logon and registers a scheduled task for crash recovery. Neither needs administrator rights. A scheduled ONLOGON task is deliberately not used: it registers against the machine and is refused without elevation."
+    },
+    "supervise:repair": {
+      "group": "Keeping it running",
+      "summary": "Re-point the launcher at this copy and lift the battery restriction.",
+      "detail": "Fixes an already-registered watchdog in place without re-registering it, so it needs no extra permission. Run this after moving or redeploying the code."
+    },
+    "supervise:uninstall": {
+      "group": "Keeping it running",
+      "summary": "Remove the logon entry and the watchdog.",
+      "detail": "Protection then depends on the SessionStart hook alone, so a crash between sessions goes unrepaired."
+    },
+    "egress": {
+      "group": "IP masking",
+      "summary": "What tunnels are available on this machine right now.",
+      "detail": "Checks for Cloudflare WARP, an ssh -D SOCKS proxy and Tor, and reports which ports are actually listening. Content redaction does not depend on any of this; egress is the separate layer that hides WHERE requests come from."
+    },
+    "egress:warp": {
+      "group": "IP masking",
+      "summary": "Install and configure Cloudflare WARP as a verified fallback.",
+      "detail": "Pass -- --install to let it run the winget install. Waits for the service to answer before configuring, polls for the listener rather than assuming `connect` means ready, and refuses to write anything into your config until an echo service confirms a different exit address. Free, no account, and the operator is accountable."
+    },
+    "providers": {
+      "group": "IP masking",
+      "summary": "Compare free egress options honestly.",
+      "detail": "Includes the measurements behind why scraped public proxy lists are NOT shipped: five verified proxies all refused the very next connection."
+    },
+    "scan": {
+      "group": "On-disk residue",
+      "summary": "Count real values still sitting in transcripts and snapshots.",
+      "detail": "Transcripts are written before the proxy sees anything, so they hold real values regardless of redaction. Reports counts by category and never prints a value. Uses an index keyed on a fingerprint of your rules, so adding a literal correctly invalidates everything rather than trusting a stale clean verdict."
+    },
+    "scrub": {
+      "group": "On-disk residue",
+      "summary": "Dry run: show exactly what rewriting those files would change.",
+      "detail": "Changes nothing. Use this before scrub:apply."
+    },
+    "scrub:apply": {
+      "group": "On-disk residue",
+      "summary": "Rewrite on-disk residue, with backups.",
+      "detail": "MODIFIES FILES IN PLACE. It rewrites your transcripts, tool results and edit snapshots, taking a backup of each one first. Uses the same pipeline and key as the proxy, so labels match what the model would have seen and --resume keeps working. Skips anything modified recently so it can never corrupt the session you are sitting in, parses JSONL per line, leaves an unparseable line byte-identical, and re-parses everything afterwards to prove nothing was damaged."
+    },
+    "verify:scrub": {
+      "group": "On-disk residue",
+      "summary": "Prove a scrub damaged nothing.",
+      "detail": "Re-parses every rewritten file and compares structure. A scrub that corrupts a transcript is worse than one that leaves values in place."
+    },
+    "patterns:adopt": {
+      "group": "Rules and patterns",
+      "summary": "Add the 20 shipped secret and PII patterns to your config.",
+      "detail": "Dry run by default; pass -- --write to apply. Backs up your rules first, screens every incoming pattern for catastrophic backtracking, skips names you already have rather than overwriting a pattern you tuned, and restores the backup if the result will not parse."
+    },
+    "pii:report": {
+      "group": "Publishing safely",
+      "summary": "List every value found, with file and line, to a LOCAL file.",
+      "detail": "The inverse of `scan`: counts cannot answer 'is this repo safe to publish', so this names them. Console output stays values-free; the values go only to the file, which is gitignored and should be deleted after review. Separates git-tracked hits (which would publish) from untracked ones (which stay on your disk)."
+    },
+    "publish:check": {
+      "group": "Publishing safely",
+      "summary": "Fail if any tracked file contains identity or personal data.",
+      "detail": "A pre-push gate. Judges git-tracked files only -- counting untracked scratch would keep it permanently red, and a permanently red gate is one people learn to bypass. Exits non-zero on a finding."
+    },
+    "vscode": {
+      "group": "Start here",
+      "summary": "Regenerate the VS Code task and debug entries from these descriptions.",
+      "detail": "Writes .vscode/tasks.json and .vscode/launch.json so every command appears in the Run Task picker with its description underneath, and in the Run and Debug panel with breakpoints working. Generated from scriptsInfo in package.json, so the terminal help, the task picker and the debug list cannot describe the same command three different ways. Pass --check to fail when regeneration would change something."
+    }
+  },
+  "files": [
+    "src",
+    "config",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ]
+}
