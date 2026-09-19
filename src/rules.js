@@ -104,11 +104,19 @@ function boundedLiteral(literal) {
 // proxy would hang at startup. Run it in a child with a hard timeout instead.
 // One-off cost at load: ~50ms per pattern.
 function isPatternSafe(source, flags) {
-  try {
-    new RegExp(source, flags);
-  } catch (e) {
-    return { ok: false, why: `invalid regex: ${e.message}` };
-  }
+  // The parent deliberately never compiles the pattern.
+  //
+  // There used to be a `new RegExp(source, flags)` here purely to check
+  // validity, with the result thrown away. It was redundant -- the child
+  // constructs the same regex a moment later -- and it undermined the point
+  // of this function: an untrusted pattern was being compiled in the very
+  // process this check exists to protect. Regex COMPILATION is not the
+  // expensive step, but "we validate it by running it here first" is the
+  // wrong shape for a safety screen, and CodeQL was right to flag it
+  // (js/regex-injection).
+  //
+  // Validity is now reported by the child, which is sandboxed and killable,
+  // via exit code 3.
 
   // Probe LENGTH matters more than probe variety. These were 60 characters,
   // which is far too short: quadratic backtracking on 60 characters costs
@@ -146,7 +154,11 @@ function isPatternSafe(source, flags) {
   // regex that never returns at all, and is now generous enough that
   // process startup cannot consume it.
   const probe = [
-    'const re = new RegExp(process.env.CCR_PROBE_SRC, process.env.CCR_PROBE_FLAGS);',
+    'let re;',
+    'try { re = new RegExp(process.env.CCR_PROBE_SRC, process.env.CCR_PROBE_FLAGS); }',
+    // Exit 3 means "this is not a valid regex", reported from inside the
+    // sandbox so the parent never has to compile it to find out.
+    'catch (e) { process.stdout.write(e.message); process.exit(3); }',
     'const probes = [',
     "  'a'.repeat(20000) + '!',",
     "  '1'.repeat(20000) + 'x',",
@@ -200,6 +212,10 @@ function isPatternSafe(source, flags) {
         ok: false,
         why: `pattern took ${ms}ms on adversarial input (budget ${PROBE_TIMEOUT_MS}ms): catastrophic backtracking`,
       };
+    }
+    // Exit 3: the child could not construct the regex at all.
+    if (e.status === 3) {
+      return { ok: false, why: `invalid regex: ${(e.stdout || '').toString().trim() || 'could not be compiled'}` };
     }
     return { ok: false, why: e.message };
   }

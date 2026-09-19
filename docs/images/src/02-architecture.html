@@ -1,0 +1,116 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --fg:#e6edf3; --dim:#8b949e;
+          --red:#f85149; --green:#3fb950; --blue:#58a6ff; --amber:#d29922; --purple:#bc8cff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif; padding:36px 40px; width:1240px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--dim); font-size:14px; margin-bottom:24px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .card h3 { margin:0 0 10px; font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; }
+  .card ul { margin:0; padding-left:16px; }
+  .card li { margin:4px 0; font-size:13px; }
+  .mono { font-family:"Cascadia Code",Consolas,monospace; font-size:12px; }
+  .c-blue h3 { color:var(--blue); } .c-blue { border-color:var(--blue); }
+  .c-green h3 { color:var(--green); }
+  .c-amber h3 { color:var(--amber); }
+  .c-purple h3 { color:var(--purple); }
+  .c-red h3 { color:var(--red); }
+  .dim { color:var(--dim); font-size:12px; }
+  .span3 { grid-column:span 3; }
+  .flow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px; }
+  .pill { border:1px solid var(--line); border-radius:20px; padding:3px 11px; font-size:12px; }
+  .pill.on { border-color:var(--green); color:var(--green); }
+  .pill.off { border-color:var(--red); color:var(--red); }
+</style>
+
+<h1>How the whole thing stays running</h1>
+<div class="sub">Five independent mechanisms. None depends on another being healthy — a single supervisor is a single point of failure.</div>
+
+<div class="grid">
+  <div class="card c-blue">
+    <h3>The proxy</h3>
+    <ul>
+      <li>Redacts literals + 27 patterns</li>
+      <li>Aliases identity, restores it inbound</li>
+      <li>Normalises timezone, locale, headers</li>
+      <li>Serves the dashboard on the same port</li>
+    </ul>
+    <div class="dim mono" style="margin-top:8px">127.0.0.1:47113</div>
+  </div>
+
+  <div class="card c-green">
+    <h3>Staying alive</h3>
+    <ul>
+      <li><b>SessionStart hook</b> — starts it, waits for health</li>
+      <li><b>Startup folder</b> — up before your first session</li>
+      <li><b>Scheduled task</b> — crash repaired ≤ 5 min</li>
+    </ul>
+    <div class="dim" style="margin-top:8px">All three run the same idempotent check. None needs admin.</div>
+  </div>
+
+  <div class="card c-amber">
+    <h3>Egress · fail closed</h3>
+    <div class="flow">
+      <span class="pill">VPN masking?</span>
+      <span class="dim">→</span>
+      <span class="pill on">tunnel idle</span>
+    </div>
+    <div class="flow">
+      <span class="pill">VPN drops?</span>
+      <span class="dim">→</span>
+      <span class="pill on">tunnel engages</span>
+    </div>
+    <div class="flow">
+      <span class="pill">no tunnel?</span>
+      <span class="dim">→</span>
+      <span class="pill off">REFUSED</span>
+    </div>
+    <div class="dim" style="margin-top:8px">An outage, never a silent exposure.</div>
+  </div>
+
+  <div class="card c-purple">
+    <h3>On-disk residue</h3>
+    <ul>
+      <li>Transcripts are written <i>before</i> anything is sent</li>
+      <li>Scrubbed hourly with the same pipeline + key</li>
+      <li>Per-run log and per-file manifest</li>
+    </ul>
+    <div class="dim mono" style="margin-top:8px">41,906 → 220 · 0 lines lost</div>
+  </div>
+
+  <div class="card c-red">
+    <h3>Audit</h3>
+    <ul>
+      <li>Every scrub pass, durably recorded</li>
+      <li>Every retention sweep — <i>including ones that removed nothing</i></li>
+      <li>Signals: staleness, failures, spikes</li>
+    </ul>
+    <div class="dim" style="margin-top:8px">"Nothing to do" and "silently stopped" must not look alike.</div>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--dim)">Retention</h3>
+    <ul>
+      <li>Every log has a configurable TTL</li>
+      <li>The retention log governs itself</li>
+      <li>Raw change logs: 7 days, owner-only</li>
+    </ul>
+    <div class="dim" style="margin-top:8px">Old records are a disk problem <i>and</i> a data-exposure problem.</div>
+  </div>
+
+  <div class="card span3" style="border-left:3px solid var(--blue)">
+    <h3 style="color:var(--blue)">One command checks the whole chain</h3>
+    <div class="mono" style="color:var(--green)">
+      ok&nbsp; rules load &nbsp;· ok&nbsp; pattern safety &nbsp;· ok&nbsp; ANTHROPIC_BASE_URL &nbsp;· ok&nbsp; proxy listening &nbsp;· ok&nbsp; egress reachable<br>
+      ok&nbsp; currently masked &nbsp;· ok&nbsp; crash recovery &nbsp;· ok&nbsp; start at logon &nbsp;· ok&nbsp; transcript scrub &nbsp;· ok&nbsp; retention
+    </div>
+    <div class="dim" style="margin-top:8px">
+      Every other tool reports on one component. The two worst failures this project had lived in the gaps
+      <i>between</i> components — and both showed green everywhere anyone thought to look.
+    </div>
+  </div>
+</div>

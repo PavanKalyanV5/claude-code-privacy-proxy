@@ -40,6 +40,8 @@ And when Claude Code then asks to edit that file, the tool receives
 `C:\Users\jqtesterson\proj` and `Jane Q. Testerson` — the real values, resolved
 back. **The model works with labels; your tools work with reality.**
 
+![How a request is transformed on its way out, and restored on its way back](docs/images/flow.png)
+
 ---
 
 ## Why this matters now
@@ -193,6 +195,16 @@ latency. It ships with no default sources, and the README says to use
 Cloudflare WARP or your own SSH tunnel instead. **Verification does not
 predict usability**, and a privacy tool that overstates its coverage is worse
 than no tool, because it stops you looking.
+
+---
+
+### The bugs behind those numbers
+
+![Five bugs, one shape: each reported success it had not earned](docs/images/failure-modes.png)
+
+Every one of them reported success it had not earned. That is the failure
+mode a privacy tool has to be designed against: a crash is loud, but a tool
+that says PROTECTED while data leaks is quiet, and it stops you looking.
 
 ---
 
@@ -421,6 +433,15 @@ version, most dependable first:
 > refused the very next connection seconds later.** Verification does not
 > predict usability. The code remains in `src/pool.js` for anyone who wants to
 > opt in with explicit sources, and ships with none.
+
+---
+
+## How it stays running
+
+![Five independent mechanisms: proxy, supervision, egress, residue, audit](docs/images/architecture.png)
+
+Five independent mechanisms. None depends on another being healthy — a
+single supervisor is a single point of failure.
 
 ---
 

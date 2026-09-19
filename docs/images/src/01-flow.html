@@ -1,0 +1,95 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --fg:#e6edf3; --dim:#8b949e;
+          --red:#f85149; --green:#3fb950; --blue:#58a6ff; --amber:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:15px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif; padding:40px; width:1200px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--dim); font-size:14px; margin-bottom:28px; }
+  .row { display:flex; align-items:stretch; gap:0; }
+  .box { background:var(--card); border:1px solid var(--line); border-radius:10px;
+         padding:14px 16px; flex:1; min-width:0; }
+  .box h3 { margin:0 0 8px; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--dim); }
+  .arrow { display:flex; align-items:center; padding:0 10px; color:var(--dim); font-size:22px; flex:0 0 auto; }
+  code, .mono { font-family:"Cascadia Code",Consolas,monospace; font-size:12.5px; }
+  .val { color:var(--red); }
+  .lab { color:var(--green); }
+  .keep { color:var(--dim); }
+  .note { margin-top:8px; font-size:12px; color:var(--dim); }
+  .band { margin-top:26px; background:var(--card); border:1px solid var(--line);
+          border-left:3px solid var(--blue); border-radius:10px; padding:14px 18px; }
+  .band b { color:var(--blue); }
+  .back { margin-top:22px; display:flex; align-items:center; gap:10px;
+          background:#11161d; border:1px dashed var(--line); border-radius:10px; padding:12px 16px; }
+  .back .t { font-size:13px; }
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:20px;
+         border:1px solid var(--line); color:var(--dim); margin-left:6px; }
+</style>
+
+<h1>What leaves your machine, and what comes back</h1>
+<div class="sub">The model reasons about labels. Your tools receive reality.</div>
+
+<div class="row">
+  <div class="box">
+    <h3>1 · You type</h3>
+    <div class="mono">
+      I'm <span class="val">Jane Q. Testerson</span>,<br>
+      <span class="val">jane@example.com</span><br>
+      <span class="val">+1-555-0142</span><br>
+      <span class="val">C:\Users\jtesterson\proj</span><br>
+      <span class="keep">const port = 8080;</span>
+    </div>
+    <div class="note">Plus what you never typed: username, hostname,
+      timezone, OS build, locale — added by the tool.</div>
+  </div>
+
+  <div class="arrow">→</div>
+
+  <div class="box" style="border-color:var(--blue)">
+    <h3 style="color:var(--blue)">2 · Local proxy <span class="tag">127.0.0.1</span></h3>
+    <div class="mono">
+      redact &nbsp;→ literals + patterns<br>
+      alias &nbsp;&nbsp;→ username, paths<br>
+      normalize → timezone, locale<br>
+      headers → strip fingerprints
+    </div>
+    <div class="note">Plain HTTP to loopback.<br>No TLS interception, no CA.</div>
+  </div>
+
+  <div class="arrow">→</div>
+
+  <div class="box">
+    <h3>3 · The API receives</h3>
+    <div class="mono">
+      I'm <span class="lab">[PII:personal:a1b2c3d4]</span>,<br>
+      <span class="lab">[PII:email:9f8e7d6c]</span><br>
+      <span class="lab">[PII:phone:1a2b3c4d]</span><br>
+      <span class="lab">C:\Users\example-user\proj</span><br>
+      <span class="keep">const port = 8080;</span>
+    </div>
+    <div class="note">Your code is untouched. Only the data about
+      <i>you</i> changed.</div>
+  </div>
+</div>
+
+<div class="back">
+  <div style="color:var(--amber);font-size:20px">↩</div>
+  <div class="t">
+    <b>Coming back:</b> the model asks to edit
+    <span class="mono lab">C:\Users\example-user\proj</span> —
+    your <span class="mono">Edit</span> tool receives
+    <span class="mono val">C:\Users\jtesterson\proj</span>.
+    Nothing breaks.
+  </div>
+</div>
+
+<div class="band">
+  <b>Why the labels are hashes, not random tokens.</b>
+  Each label is <span class="mono">HMAC-SHA256(key, value)</span>, so the same
+  value always produces the same label. A random token per occurrence would
+  change the prompt prefix on every request and silently destroy prompt
+  caching — your bill would multiply and you would never connect it to your
+  privacy tool.
+</div>
