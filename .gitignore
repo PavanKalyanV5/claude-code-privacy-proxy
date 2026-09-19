@@ -45,3 +45,7 @@ LITERAL-AUDIT*.txt
 # reference, not part of the published solution.
 archive/
 .u2
+
+# Windows reserved device name; created accidentally by a --out /dev/null
+# on this platform, and git cannot index it.
+nul

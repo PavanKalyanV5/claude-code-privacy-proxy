@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/PavanKalyanV5/claude-code-privacy-proxy/security/advisories/new
+    about: A leak, a wrong resolution, or anything that makes the tool claim protection it is not providing. Please report privately, not here.
+  - name: Question or idea
+    url: https://github.com/PavanKalyanV5/claude-code-privacy-proxy/discussions
+    about: Not sure it is a bug? Start a discussion. Please still use synthetic values.

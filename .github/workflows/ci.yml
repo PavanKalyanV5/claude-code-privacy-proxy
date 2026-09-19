@@ -1,0 +1,64 @@
+# CI for a project with zero runtime dependencies: no install step, nothing
+# to cache, no lockfile to audit. The whole pipeline is "does it pass on the
+# platforms people run it on".
+#
+# Windows is listed FIRST and is not optional. This tool spawns child
+# processes, registers scheduled tasks, sets file ACLs and reads paths that
+# behave differently there -- and several of the worst bugs in its history
+# were Windows-only: os.homedir() ignoring HOME, consoles flashing without
+# windowsHide, EBUSY renaming a directory in use. A green Linux run proves
+# very little about the platform most of the pain came from.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        node: ['18', '20', '22']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: No dependencies, by design
+        shell: bash
+        run: |
+          node -e "
+            const p = require('./package.json');
+            const d = Object.keys(p.dependencies || {}).length;
+            const v = Object.keys(p.devDependencies || {}).length;
+            if (d || v) { console.error('dependencies appeared: ' + d + ' runtime, ' + v + ' dev'); process.exit(1); }
+            console.log('confirmed: 0 runtime, 0 dev');
+          "
+
+      - name: Tests
+        run: npm test
+
+      # Runs on every PR so a contributor cannot accidentally commit a real
+      # value. It judges git-tracked files only.
+      - name: No personal data in tracked files
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '20'
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.claude/redaction"
+          cp config/redact-rules.example.json "$HOME/.claude/redaction/redact-rules.json"
+          node -e "require('fs').writeFileSync(process.env.HOME + '/.claude/redaction/redact.key', require('crypto').randomBytes(32))"
+          npm run publish:check
+
+      - name: Docs match the scripts they document
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '20'
+        run: node src/cli/vscode-config.js --check
