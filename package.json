@@ -24,7 +24,7 @@
     "help": "node src/cli/help.js",
     "start": "node src/start.js",
     "stop": "node src/lifecycle.js shutdown",
-    "test": "node --test src/test/*.test.js",
+    "test": "node src/cli/run-tests.js",
     "verify": "node src/verify-protection.js",
     "status": "node src/cli/status.js",
     "scan": "node src/scan-residue.js",

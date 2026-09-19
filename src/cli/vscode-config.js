@@ -119,7 +119,13 @@ for (const [name, body] of files) {
   } catch (e) {
     /* not there yet */
   }
-  if (current === body) {
+  // Compare with line endings normalised. .gitattributes now pins these to
+  // LF, but a clone made before that, or one with a different autocrlf
+  // setting, would otherwise report the file as stale purely because git
+  // rewrote its newlines on checkout -- a CI failure whose message points at
+  // the content when the content is identical.
+  const same = (a, b) => a !== null && a.replace(/\r\n/g, '\n') === b.replace(/\r\n/g, '\n');
+  if (same(current, body)) {
     console.log('  up to date : .vscode/' + name);
     continue;
   }

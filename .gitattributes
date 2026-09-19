@@ -1,0 +1,36 @@
+# Normalise line endings in the repository.
+#
+# Without this, a Windows clone with core.autocrlf=true checks these files
+# out as CRLF while the generators that produce some of them write LF -- so
+# `vscode-config.js --check` compared a CRLF file against LF output and
+# failed in CI on Windows only, for a reason that had nothing to do with the
+# content.
+#
+# LF everywhere, including on Windows: every consumer here (Node, git, VS
+# Code, PowerShell) reads LF fine, and it removes a whole class of "works on
+# my machine" diffs.
+* text=auto eol=lf
+
+# VBS is the exception. Windows Script Host requires CRLF, and the launcher
+# this project generates is written with explicit \r\n for that reason. A
+# checkout that converts it to LF produces a launcher Windows will not run.
+*.vbs text eol=crlf
+
+# Binaries, left exactly as they are.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.exe binary
+*.dll binary
+*.node binary
+*.key binary
+
+# Test fixtures whose bytes are the point of the test. Any transformation
+# here would change what is being asserted.
+src/test/fixtures/** -text

@@ -44,10 +44,8 @@
       "type": "node",
       "request": "launch",
       "name": "Proving it works: test",
-      "program": "${workspaceFolder}/--test",
-      "args": [
-        "src/test/*.test.js"
-      ],
+      "program": "${workspaceFolder}/src/cli/run-tests.js",
+      "args": [],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "skipFiles": [

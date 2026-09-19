@@ -44,7 +44,18 @@ function baseConfig(port) {
   };
 }
 
-let portSeq = 47500;
+// A counter starting at a fixed number is not a free port, it is a GUESS.
+// It held up locally and then failed in CI with
+// `EADDRINUSE: address already in use 127.0.0.1:47506` -- a shared runner has
+// no obligation to leave any particular port alone, and a port released
+// moments earlier can still be in TIME_WAIT.
+//
+// Randomising the base makes a collision between concurrently running test
+// FILES unlikely, and the retry in startWith handles the rest. Asking the OS
+// for a port and then closing it would still race, because the child binds it
+// a moment later -- there is no way to hand an already-bound socket to a
+// separate process here.
+let portSeq = 20000 + Math.floor(Math.random() * 30000);
 function freePort() {
   return portSeq++;
 }
@@ -53,7 +64,21 @@ function freePort() {
 // A child process rather than require(): a crash at startup is the failure
 // mode under test, and it must be observable as an exit code rather than
 // taking the test runner down with it.
-function startWith(config, extraEnv = {}) {
+// Retries on EADDRINUSE with a fresh port. Binding a port is inherently
+// racy on a shared machine, and a test that fails for that reason teaches
+// nobody anything -- it just trains people to re-run CI until it is green,
+// which is how a real flake gets ignored.
+function startWith(config, extraEnv = {}, attempt = 0) {
+  const res = startOnce(config, extraEnv);
+  if (attempt < 4 && /EADDRINUSE/.test(res.out + res.log)) {
+    const next = JSON.parse(JSON.stringify(config));
+    if (next.proxy) next.proxy.port = freePort();
+    return startWith(next, extraEnv, attempt + 1);
+  }
+  return res;
+}
+
+function startOnce(config, extraEnv = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'startt-'));
   const rulesPath = path.join(dir, 'rules.json');
   const keyPath = path.join(dir, 'redact.key');
