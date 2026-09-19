@@ -49,3 +49,7 @@ archive/
 # Windows reserved device name; created accidentally by a --out /dev/null
 # on this platform, and git cannot index it.
 nul
+
+# Marketing drafts. Not part of the shipped product, and not published
+# from here -- they are pasted into each platform.
+articles/

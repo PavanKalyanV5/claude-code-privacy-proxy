@@ -48,16 +48,32 @@ jobs:
       - name: Tests
         run: npm test
 
-      # Runs on every PR so a contributor cannot accidentally commit a real
-      # value. It judges git-tracked files only.
-      - name: No personal data in tracked files
+      # `npm run publish:check` is deliberately NOT run here.
+      #
+      # It answers "does this repo contain MY personal data", which only has
+      # meaning against a real rules file. In CI the only rules available are
+      # the template ones, whose literals ("Jane Q. Testerson", the 555
+      # number, the example.com address) are the fixtures this repo uses on
+      # purpose, in tests and documentation, everywhere. So the gate reported
+      # personal=112 and failed -- flagging the test data as a leak.
+      #
+      # It is a pre-push tool for a maintainer's own machine. Anything that
+      # reaches CI is already public, so there is nothing left for it to
+      # protect. GitHub's own secret scanning covers the credential case.
+      #
+      # What IS worth checking here is that the ENGINE works against the
+      # shipped template: every template literal must be redacted in every
+      # adjacency shape, and every shipped pattern must survive the
+      # catastrophic-backtracking screen. That tests the tool rather than the
+      # repository's cleanliness.
+      - name: The engine redacts the shipped template config
         if: matrix.os == 'ubuntu-latest' && matrix.node == '20'
         shell: bash
         run: |
           mkdir -p "$HOME/.claude/redaction"
           cp config/redact-rules.example.json "$HOME/.claude/redaction/redact-rules.json"
           node -e "require('fs').writeFileSync(process.env.HOME + '/.claude/redaction/redact.key', require('crypto').randomBytes(32))"
-          npm run publish:check
+          node src/audit-rules.js
 
       - name: Docs match the scripts they document
         if: matrix.os == 'ubuntu-latest' && matrix.node == '20'

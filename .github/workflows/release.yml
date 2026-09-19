@@ -1,0 +1,91 @@
+# Continuous DELIVERY, deliberately stopping short of continuous deployment.
+#
+# There is no build step to automate: zero dependencies, plain Node, nothing
+# compiled or bundled. So "CD" here means one thing -- when a version tag is
+# pushed, produce a citable, verifiable release artifact.
+#
+# WHAT THIS DOES NOT DO, AND WHY
+#
+# It does not publish to npm automatically. For most projects that would be
+# the obvious final step; for this one it is a decision with a real cost.
+# This package sits in front of every API request and handles personal data
+# in plaintext. Auto-publishing means a tag push can put new code with that
+# access onto other people's machines without anyone having looked at the
+# diff of what was actually published.
+#
+# The whole project argues that a privacy tool should be inspectable rather
+# than trusted. Automating its own distribution would undercut that. So a
+# release is prepared automatically and PUBLISHED by a human running
+# `npm publish` after checking `npm pack --dry-run`.
+#
+# It also does not deploy anything. There is no server. The proxy runs on
+# the user's machine, which is the point.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # A tag is a promise that this version works. Verify it rather than
+      # assume it -- a broken release is worse than a late one.
+      - name: Tests must pass at the tagged commit
+        run: npm test
+
+      - name: Tag must match package.json version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "tag v$TAG does not match package.json $PKG"
+            exit 1
+          fi
+          echo "version $PKG confirmed"
+
+      # Exactly what `npm publish` would upload, so the artifact attached to
+      # the release and the tarball on npm are the same bytes.
+      - name: Build the tarball
+        run: npm pack
+
+      - name: What is in it
+        shell: bash
+        run: |
+          echo "files that would be published:"
+          npm pack --dry-run 2>&1 | sed 's/^/  /'
+
+      - name: Publish the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.tgz'
+          generate_release_notes: true
+          draft: true
+          body: |
+            Install from source:
+
+            ```bash
+            git clone https://github.com/${{ github.repository }}
+            cd ${{ github.event.repository.name }}
+            npm test          # no network required
+            npm run doctor    # checks the whole chain end to end
+            ```
+
+            Zero runtime dependencies. See the README for setup and
+            docs/threat-model.md for what this does **not** protect.
+
+            ---
+            *Drafted automatically. Review the attached tarball, then
+            publish. `npm publish` stays a manual step on purpose — see the
+            comment at the top of `.github/workflows/release.yml`.*
