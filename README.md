@@ -301,6 +301,20 @@ and never restarts a working proxy. Neither creates a console window.
 Without this, a proxy that dies at 10am stays dead until your next session —
 and because egress is fail-closed, that shows up as refused requests.
 
+**On Linux** the same two triggers are systemd *user* units — no root, nothing
+system-wide: a oneshot service that runs the same idempotent start check, and a
+timer that fires it at login and every five minutes on the clock.
+
+```bash
+npm run supervise:install      # writes ~/.config/systemd/user/claude-redaction-proxy.{service,timer}
+npm run supervise              # confirm: units, at login, watchdog, and what they run
+```
+
+Starting at *boot*, before you log in, needs `loginctl enable-linger`. The
+installer does not run it, because it changes system state; `supervise` tells
+you whether it is on. Without it, protection comes up at login, which is before
+your first Claude Code session either way.
+
 **5. Open the dashboard**
 
 ```bash

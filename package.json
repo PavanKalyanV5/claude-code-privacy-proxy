@@ -96,21 +96,21 @@
     "supervise": {
       "group": "Keeping it running",
       "summary": "Is anything watching the proxy?",
-      "detail": "Reports the logon entry and the 5-minute watchdog, including whether the watchdog is allowed to run on battery -- a scheduled task defaults to NOT running unplugged, which made an apparently healthy watchdog never fire once."
+      "detail": "Reports the logon entry and the 5-minute watchdog. On Windows that includes whether the watchdog is allowed to run on battery -- a scheduled task defaults to NOT running unplugged, which made an apparently healthy watchdog never fire once. On Linux it reads the systemd user timer back and checks the script the unit runs still exists."
     },
     "supervise:install": {
       "group": "Keeping it running",
       "summary": "Start at logon, and repair a crashed proxy within 5 minutes.",
-      "detail": "Writes a Startup-folder launcher for logon and registers a scheduled task for crash recovery. Neither needs administrator rights. A scheduled ONLOGON task is deliberately not used: it registers against the machine and is refused without elevation."
+      "detail": "Windows: writes a Startup-folder launcher for logon and registers a scheduled task for crash recovery. Neither needs administrator rights. A scheduled ONLOGON task is deliberately not used: it registers against the machine and is refused without elevation. Linux: installs a systemd USER timer and oneshot service (no root) that run the same idempotent start check at login and every 5 minutes. Starting at boot without logging in needs `loginctl enable-linger`, which this does not do for you."
     },
     "supervise:repair": {
       "group": "Keeping it running",
-      "summary": "Re-point the launcher at this copy and lift the battery restriction.",
-      "detail": "Fixes an already-registered watchdog in place without re-registering it, so it needs no extra permission. Run this after moving or redeploying the code."
+      "summary": "Re-point the launcher or units at this copy and fix what stops the watchdog running.",
+      "detail": "Fixes an already-registered watchdog in place, so it needs no extra permission on Windows; on Linux it rewrites the unit files and re-enables the timer. Run this after moving or redeploying the code."
     },
     "supervise:uninstall": {
       "group": "Keeping it running",
-      "summary": "Remove the logon entry and the watchdog.",
+      "summary": "Remove the logon entry and the watchdog (Windows task or Linux systemd timer).",
       "detail": "Protection then depends on the SessionStart hook alone, so a crash between sessions goes unrepaired."
     },
     "egress": {

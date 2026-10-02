@@ -268,6 +268,49 @@ function finishEgress(h, eg, configured, reachable, endpointNote) {
     );
   }
 
+  if (process.platform === 'linux') {
+    // systemd user units: a timer that runs the idempotent start check at login
+    // and every five minutes. Read the state back rather than assuming it.
+    const supervise = require('./supervise');
+    const unit = supervise.UNIT_NAME;
+    const sc = (args) => sh('systemctl', ['--user'].concat(args));
+    const enabled = sc(['is-enabled', unit + '.timer']);
+    const active = sc(['is-active', unit + '.timer']);
+    const isEnabled = enabled.ok && /enabled/.test(enabled.out);
+    const isActive = active.ok && /^active/m.test(active.out);
+
+    if (!fs.existsSync(supervise.TIMER_FILE)) {
+      add('crash recovery', 'WARN', 'no watchdog registered: a crash between sessions goes unrepaired', 'npm run supervise:install');
+      add('start at login', 'WARN', 'nothing starts the proxy after a reboot until a session opens', 'npm run supervise:install');
+    } else {
+      add(
+        'crash recovery',
+        isActive ? 'ok' : 'FAIL',
+        isActive ? 'watchdog timer active (every ' + supervise.WATCHDOG_MINUTES + ' min)' : 'watchdog timer is NOT active',
+        isActive ? null : 'npm run supervise:repair'
+      );
+      add(
+        'start at login',
+        isEnabled ? 'ok' : 'WARN',
+        isEnabled ? 'timer enabled' : 'timer is not enabled: nothing starts the proxy after a reboot',
+        isEnabled ? null : 'npm run supervise:repair'
+      );
+      // The failure that made the old Windows logon launcher a silent no-op:
+      // it pointed at a path that no longer existed.
+      const t = require('./supervise').SERVICE_FILE;
+      let script = null;
+      try {
+        const m = /^ExecStart=.*?"([^"]*lifecycle\.js)"/m.exec(fs.readFileSync(t, 'utf8'));
+        script = m && m[1].replace(/%%/g, '%');
+      } catch (e) {
+        /* reported below */
+      }
+      if (!script || !fs.existsSync(script)) {
+        add('watchdog target', 'FAIL', 'the unit runs a script that does not exist', 'npm run supervise:repair');
+      }
+    }
+  }
+
   // ----------------------------------------------------------- 5. residue
 
   try {
