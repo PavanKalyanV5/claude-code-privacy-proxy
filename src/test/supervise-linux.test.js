@@ -45,7 +45,9 @@ test('the service is not itself installed anywhere: only the timer is enabled', 
 
 test('every path the service runs exists', () => {
   const t = sup.serviceUnitText();
-  const quoted = [...t.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  // Undo systemd quoting, so the check sees the real path on any platform.
+  const unquote = (q) => q.replace(/\\"/g, '"').replace(/\\\\/g, '\\').replace(/%%/g, '%');
+  const quoted = [...t.matchAll(/"((?:[^"\\]|\\.)+)"/g)].map((m) => unquote(m[1]));
   assert.ok(quoted.length >= 2, 'node and the script must both be quoted');
   for (const p of quoted) assert.ok(fs.existsSync(p), p + ' must exist');
 });
@@ -58,7 +60,10 @@ test('paths with spaces, quotes, backslashes and percent signs survive systemd p
   assert.strictEqual(sup.unitQuote('/a/"q"/b'), '"/a/\\"q\\"/b"');
   assert.strictEqual(sup.unitQuote('/a\\b'), '"/a\\\\b"');
   const t = sup.serviceUnitText('/opt/my node/node', '/srv/a b/50%');
-  assert.match(t, /^ExecStart="\/opt\/my node\/node" "\/srv\/a b\/50%%\/src\/lifecycle\.js" start --supervised$/m);
+  const script = path.join('/srv/a b/50%', 'src', 'lifecycle.js');
+  const expected = 'ExecStart=' + sup.unitQuote('/opt/my node/node') + ' ' + sup.unitQuote(script) + ' start --supervised';
+  assert.ok(t.split('\n').includes(expected), 'ExecStart must be exactly: ' + expected);
+  assert.ok(t.includes('50%%'), 'the percent sign must be escaped');
 });
 
 test('the timer fires at activation and then every five minutes on the clock', () => {

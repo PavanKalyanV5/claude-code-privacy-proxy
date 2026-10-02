@@ -143,7 +143,9 @@ test('a ".." the model typed itself is not blamed on the label', () => {
 test('a value containing a path separator is allowed (a git org/repo label stands for one)', () => {
   const { resolver, base } = setup({ cached: { [LABEL]: 'org/repo' } });
   const out = resolver.resolveToolInput('Write', { file_path: labelled(base, 'f.txt'), content: 'x' });
-  assert.strictEqual(out.file_path, path.join(base, 'org/repo', 'f.txt'));
+  // Substituted verbatim: a label stands for text, and the text keeps its own
+  // separator. (path.join would normalise it to a backslash on Windows.)
+  assert.strictEqual(out.file_path, labelled(base, 'f.txt').replace(LABEL, 'org/repo'));
 });
 
 test('through the SSE transformer: the tool_use the CLIENT receives has a real path', () => {
