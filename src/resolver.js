@@ -26,6 +26,31 @@ const FILE_TOOLS = {
   NotebookEdit: 'notebook_path',
 };
 
+// Every built-in tool input that names a location or searches for a value.
+// The model only ever sees labels, so a path or pattern it composes from
+// something it read (a client name in a directory, say) carries the LABEL and
+// must be turned back into the real value before the tool runs. Without this
+// a Write to a new file creates a directory literally named "[PII:...]": the
+// content was resolved but the destination was not, and nothing reported it.
+//
+//   paths    -- resolved from the cache only (there is no file to derive from,
+//               and for a new file the path does not exist yet), and refused
+//               if the substitution would climb out of the directory.
+//   patterns -- regex/glob text; resolved from the cache, no path safety rule.
+const TOOL_FIELDS = {
+  Read: { paths: ['file_path'] },
+  Write: { paths: ['file_path'] },
+  Edit: { paths: ['file_path'] },
+  MultiEdit: { paths: ['file_path'] },
+  NotebookEdit: { paths: ['notebook_path'] },
+  NotebookRead: { paths: ['notebook_path'] },
+  LS: { paths: ['path'] },
+  Glob: { paths: ['path'], patterns: ['pattern'] },
+  Grep: { paths: ['path'], patterns: ['pattern', 'glob'] },
+};
+
+const dotDotSegments = (s) => s.split(/[\\/]+/).filter((x) => x === '..').length;
+
 // Translate an edit expressed against the MODEL-VISIBLE text (rendered by the
 // full redact -> alias -> normalize pipeline) into one expressed against the
 // REAL text. Mirrors resolve.js's translateEdit, but sourced from `rendered`
@@ -127,6 +152,51 @@ function createResolver({
     return node;
   }
 
+  // Resolve labels in a path. All-or-nothing: a path with one label resolved
+  // and another not points somewhere nobody asked for, so on any failure the
+  // original is returned untouched and the failure is counted and warned.
+  function resolvePathText(text, toolName, field) {
+    if (typeof text !== 'string') return text;
+    LABEL_RE.lastIndex = 0;
+    if (!LABEL_RE.test(text)) return text;
+    const out = resolveLabels(text, null);
+    if (out === null) {
+      bump('pathLabelUnresolved');
+      warn(`a redaction label in ${toolName}.${field} could not be resolved; the tool will act on a path containing [PII:...] instead of the real one`);
+      return text;
+    }
+    // A cached value must not be able to turn a path into a traversal.
+    if (out.includes('\0') || dotDotSegments(out) > dotDotSegments(text)) {
+      bump('pathUnsafe');
+      warn(`a label in ${toolName}.${field} resolves to a value that would escape its directory; left unresolved`);
+      return text;
+    }
+    bump('pathResolved');
+    return out;
+  }
+
+  function resolveToolFields(toolName, input) {
+    const spec = TOOL_FIELDS[toolName];
+    if (!spec) return input;
+    let out = input;
+    const set = (k, v) => {
+      if (v !== out[k]) out = out === input ? Object.assign({}, input, { [k]: v }) : Object.assign(out, { [k]: v });
+    };
+    for (const f of spec.paths || []) set(f, resolvePathText(input[f], toolName, f));
+    for (const f of spec.patterns || []) {
+      const v = input[f];
+      if (typeof v !== 'string') continue;
+      const r = resolveLabels(v, null);
+      if (r === null) {
+        bump('patternLabelUnresolved');
+        warn(`a redaction label in ${toolName}.${f} could not be resolved; the search will look for the label text itself`);
+      } else {
+        set(f, r);
+      }
+    }
+    return out;
+  }
+
   // Check if a tool is in the remote list (by prefix match).
   function isRemoteTool(toolName) {
     if (typeof toolName !== 'string') return false;
@@ -136,6 +206,9 @@ function createResolver({
   return {
     resolveToolInput(name, input) {
       if (!input || typeof input !== 'object') return input;
+
+      // Destination first: everything below reads or writes the file this names.
+      input = resolveToolFields(name, input);
 
       const field = FILE_TOOLS[name];
       if (!field) {
