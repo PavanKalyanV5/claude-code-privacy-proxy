@@ -304,7 +304,14 @@ function compile(rules, warn = () => {}) {
   //
   // A count that shrinks when you add rules is worse than no count: it says
   // the adoption failed when in fact every one of them was live and firing.
-  return { regexes, literalCount: literals.length, patternCount };
+  // The configured literal values, kept so the resolver can recompute their
+  // labels without the cache (a label is a keyed hash of the matched text, so
+  // it is derivable from the rules alone). Values only, never persisted.
+  // A literal that is also matched by a category pattern (an email or phone
+  // number you listed) is labelled under THAT category, because the pattern
+  // wins the overlap. So the resolver needs every category, not just 'personal'.
+  const categories = [...new Set(regexes.flatMap((r) => Object.values(r.labels || {})))];
+  return { regexes, literalCount: literals.length, patternCount, literalValues: literals.map((l) => l.v), categories };
 }
 
 function load(rulesPath = process.env.CCR_RULES_PATH || RULES_PATH) {

@@ -188,9 +188,10 @@ test('resume: a different master key produces a DIFFERENT label (the check has t
 
 test('resume: a label surviving from a scrubbed transcript still resolves for a local tool', () => {
   // The practical consequence of coherence: when a resumed conversation feeds
-  // a label back into a tool call, the resolver must map it to the real value
-  // from the cache or from the file. Here there is no file, so it must refuse
-  // rather than pass a label through to a local tool as if it were real data.
+  // a label back into a tool call, the resolver must map it to the real value.
+  // A scrubbed transcript's labels never pass through the proxy as real values,
+  // so the cache never learned them; a configured literal's label is derivable
+  // from the rules and the key, so it resolves with NO file and NO cache.
   const RULES = compile({ literals: [SECRET], patterns: [] }, () => {});
   const kLabel = subkey(MASTER, 'label');
   const PIPE = {
@@ -204,9 +205,7 @@ test('resume: a label surviving from a scrubbed transcript still resolves for a 
 
   const resolver = createResolver({ rules: RULES, kLabel });
   const out = resolver.resolveToolInput('Write', { file_path: path.join(os.tmpdir(), 'nope-' + Math.random(), 'x.txt'), content: 'value is ' + label });
-  // With no file to derive from and no cache entry, the label cannot be
-  // resolved. Passing it through would write "[PII:...]" into a real file,
-  // which the resolver warns about rather than doing silently.
   assert.ok(out && typeof out.content === 'string');
-  assert.ok(out.content.includes(label) || !out.content.includes(SECRET), 'an unresolvable label must not become the real value by accident');
+  assert.strictEqual(out.content, 'value is ' + SECRET, 'a literal label must resolve without the cache');
+  assert.ok(!out.content.includes('[PII:'), 'no label may be written into the file');
 });

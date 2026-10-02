@@ -96,15 +96,51 @@ function createResolver({
     stats[k] = (stats[k] || 0) + 1;
   }
 
+  // label -> value for every configured literal, recomputed from the rules and
+  // the key rather than remembered. The cache only learns a label when a real
+  // value is redacted on its way out, so it misses labels the scrubber wrote
+  // into old transcripts, anything past its TTL or size cap, and a cache that
+  // was lost or written under another key. A literal's label is derivable, so
+  // none of those can strand it. Literals match case-insensitively and the
+  // label hashes the MATCHED text, so the common spellings are precomputed;
+  // an odd mixed-case one still depends on the cache. Category patterns
+  // (email, ip, ...) are open-ended and always do.
+  //
+  // Every category, not just 'personal': a literal that a category pattern also
+  // matches (an email or phone number you listed) is labelled under the
+  // pattern's category, because the pattern wins the overlap. A label is an
+  // exact keyed hash, so a candidate under the wrong category can never
+  // resolve to a wrong value -- it simply never matches anything.
+  const literalLabels = new Map();
+  const ruleSet = renderCfg.rules || {};
+  const categories = ruleSet.categories && ruleSet.categories.length ? ruleSet.categories : ['personal'];
+  for (const v of ruleSet.literalValues || []) {
+    const title = v.toLowerCase().replace(/(^|[^\p{L}\p{N}])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+    for (const spelling of new Set([v, v.toLowerCase(), v.toUpperCase(), title])) {
+      for (const category of categories) {
+        literalLabels.set(makeLabel(renderCfg.kLabel, category, spelling), spelling);
+      }
+    }
+  }
+
+  function lookupLabel(label) {
+    const cached = cache ? cache.get(label) : undefined;
+    if (cached !== undefined) {
+      bump('cacheHit');
+      return cached;
+    }
+    const derived = literalLabels.get(label);
+    if (derived !== undefined) bump('literalDerived');
+    return derived;
+  }
+
   function fromCache(text) {
-    if (!cache || typeof text !== 'string') return text;
+    if (typeof text !== 'string') return text;
     LABEL_RE.lastIndex = 0;
     if (!LABEL_RE.test(text)) return text;
     return text.replace(LABEL_RE, (label) => {
-      const v = cache.get(label);
-      if (v === undefined) return label;
-      bump('cacheHit');
-      return v;
+      const v = lookupLabel(label);
+      return v === undefined ? label : v;
     });
   }
 

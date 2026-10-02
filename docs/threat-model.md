@@ -136,7 +136,7 @@ oversights.
 | A regex fails the backtracking screen | **Disabled with a warning** | One bad pattern should not take the proxy down |
 | Edit derivation is ambiguous | **Refuse the edit** | A wrong `old_string` corrupts a file silently |
 | Label cannot be resolved for a write | **Warn loudly, pass through** | Writing `[PII:…]` into a file is visible and fixable; guessing is not |
-| Label cannot be resolved in a tool's path | **Warn loudly, pass through, count it** | The tool then acts on a path containing `[PII:…]` (a Write creates a directory with that name); the `pathLabelUnresolved` counter and the warning are the only signal, so they must not be silent |
+| Label cannot be resolved in a tool's path | **Warn loudly, pass through, count it** | The tool then acts on a path containing `[PII:…]` (a Write creates a directory with that name); the `pathLabelUnresolved` counter and the warning are the only signal, so they must not be silent. Labels for your configured literals are recomputed from the rules and key (`literalDerived`), so they resolve even with an empty cache; only pattern matches (emails, IPs, …) and odd mixed-case spellings depend on the cache |
 | A cached label would resolve to a path that escapes its directory | **Leave it unresolved** | A stored value must not be able to turn `…/[PII:…]/f` into `../../etc/f`; counted as `pathUnsafe` |
 | Status file stale or missing | **Report NOT protected** | Cannot verify means cannot claim |
 

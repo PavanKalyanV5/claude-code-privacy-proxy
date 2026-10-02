@@ -106,8 +106,9 @@ test('an input with no label is returned unchanged, by reference', () => {
 });
 
 test('a label that cannot be resolved leaves the path alone, and says so', () => {
+  // Not a configured literal and not cached: genuinely underivable.
   const { resolver, base, warns, stats } = setup({ cached: {} });
-  const input = { file_path: labelled(base, 'new.txt'), content: 'x' };
+  const input = { file_path: path.join(base, '[PII:email:0123456789abcdef]', 'new.txt'), content: 'x' };
   const out = resolver.resolveToolInput('Write', input);
   assert.strictEqual(out.file_path, input.file_path);
   assert.strictEqual(stats.pathLabelUnresolved, 1);
@@ -159,4 +160,75 @@ test('through the SSE transformer: the tool_use the CLIENT receives has a real p
   assert.strictEqual(final.file_path, real(base, 'new.txt'));
   assert.strictEqual(final.content, 'by Acme');
   assert.ok(!out.includes('[PII:'), 'no label may reach the client');
+});
+
+// ---- labels derivable from the rules need no cache ----
+
+test('a literal resolves with an EMPTY cache: derived from the rules and the key', () => {
+  const { resolver, base, stats, warns } = setup({ cached: {} });
+  const out = resolver.resolveToolInput('Write', { file_path: labelled(base, 'new.txt'), content: `by ${LABEL}` });
+  assert.strictEqual(out.file_path, real(base, 'new.txt'));
+  assert.strictEqual(out.content, 'by Acme');
+  assert.ok(stats.literalDerived >= 2);
+  assert.strictEqual(warns.length, 0);
+});
+
+test('it also works with no cache object at all', () => {
+  const resolver = createResolver({ rules: RULES, kLabel: K });
+  const out = resolver.resolveToolInput('Read', { file_path: `/x/${LABEL}/f` });
+  assert.strictEqual(out.file_path, '/x/Acme/f');
+});
+
+test('common case spellings of a literal resolve to the spelling that was matched', () => {
+  const rules = compile({ literals: ['Acme Corp'] });
+  const resolver = createResolver({ rules, kLabel: K });
+  for (const spelling of ['Acme Corp', 'acme corp', 'ACME CORP']) {
+    const label = makeLabel(K, 'personal', spelling);
+    assert.strictEqual(resolver.resolveToolInput('Read', { file_path: `/x/${label}` }).file_path, `/x/${spelling}`, spelling);
+  }
+});
+
+test('a pattern category (email) is NOT derivable: it needs the cache, and warns without it', () => {
+  const rules = compile({ literals: ['Acme'], patterns: [{ name: 'email', regex: '[a-z]{1,20}@[a-z]{1,20}\\.com', flags: 'gi' }] });
+  const label = makeLabel(K, 'email', 'a@b.com');
+  const warns = [];
+  const stats = {};
+  const bare = createResolver({ rules, kLabel: K, stats, warn: (m) => warns.push(m) });
+  assert.strictEqual(bare.resolveToolInput('Read', { file_path: `/x/${label}` }).file_path, `/x/${label}`);
+  assert.strictEqual(stats.pathLabelUnresolved, 1);
+  assert.strictEqual(warns.length, 1);
+  const cached = createResolver({ rules, kLabel: K, cache: { get: (l) => (l === label ? 'a@b.com' : undefined), set() {} } });
+  assert.strictEqual(cached.resolveToolInput('Read', { file_path: `/x/${label}` }).file_path, '/x/a@b.com');
+});
+
+test('a label for a value that is NOT a configured literal is not invented', () => {
+  const resolver = createResolver({ rules: RULES, kLabel: K });
+  const stranger = makeLabel(K, 'personal', 'Stranger');
+  assert.strictEqual(resolver.resolveToolInput('Read', { file_path: `/x/${stranger}` }).file_path, `/x/${stranger}`);
+});
+
+test('a label made under a DIFFERENT key does not resolve', () => {
+  const resolver = createResolver({ rules: RULES, kLabel: K });
+  const foreign = makeLabel(Buffer.alloc(32, 99), 'personal', 'Acme');
+  assert.strictEqual(resolver.resolveToolInput('Read', { file_path: `/x/${foreign}` }).file_path, `/x/${foreign}`);
+});
+
+test('Bash also benefits: a literal label in a command resolves without the cache', () => {
+  const resolver = createResolver({ rules: RULES, kLabel: K });
+  assert.strictEqual(resolver.resolveToolInput('Bash', { command: `ls /srv/${LABEL}` }).command, 'ls /srv/Acme');
+});
+
+test('a listed literal that a category pattern also matches resolves under the pattern category', () => {
+  const { renderForModel, makeRenderConfig } = require('../pipeline');
+  const addr = 'jane@example.com';
+  const rules = compile({
+    literals: [addr],
+    patterns: [{ name: 'email', regex: '[a-z]{1,20}@[a-z]{1,20}\\.com', flags: 'gi' }],
+  });
+  const render = makeRenderConfig({ rules, kLabel: K, aliases: [], normalizers: null });
+  // What the model actually sees: the PATTERN wins the overlap.
+  const seen = renderForModel(`/x/${addr}/f`, render).text;
+  assert.match(seen, /\[PII:email:[0-9a-f]{16}\]/, 'precondition: labelled under the email category, not personal');
+  const resolver = createResolver({ rules, kLabel: K, render });
+  assert.strictEqual(resolver.resolveToolInput('Read', { file_path: seen }).file_path, `/x/${addr}/f`);
 });
