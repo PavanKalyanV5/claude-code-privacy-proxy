@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.2.0 — 2026-10-02
+
+### Features
+
+- **supervise**: crash recovery and start-at-login on Linux via systemd user units (08e7ab2)
+- **resolver**: derive labels for configured literals without the cache (e58d30a)
+
+### Fixes
+
+- **resolver**: resolve labels in tool paths and search patterns (e1f7bf6)
+
+_Plus 3 maintenance commits._
+
 ## v1.1.2 — 2026-09-19
 
 ### Fixes
