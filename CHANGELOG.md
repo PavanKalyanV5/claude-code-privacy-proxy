@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.1 — 2026-10-22
+
+### Fixes
+
+- **server**: force IPv4 for upstream requests (b4e7a5e)
+
 ## v1.2.0 — 2026-10-02
 
 ### Features
