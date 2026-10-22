@@ -183,7 +183,12 @@ function createServer({
 
       const sseStats = { resolvedAliases: 0 };
       const upstreamReq = agent.request(
-        { hostname: upstream, port: upstreamPort, path: req.url, method: req.method, headers },
+        {
+          hostname: upstream, port: upstreamPort, path: req.url, method: req.method, headers,
+          // ponytail: IPv4 only. A host with broken IPv6 makes Node's dual-stack connect fail
+          // with an empty AggregateError (502 + client retries). Drop this on IPv6-only networks.
+          family: 4,
+        },
         (ur) => {
           const streaming = (ur.headers['content-type'] || '').includes('text/event-stream');
           res.writeHead(ur.statusCode, ur.headers);
