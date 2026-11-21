@@ -34,7 +34,6 @@ const http = require('http');
 const path = require('path');
 const { spawn } = require('child_process');
 const { load } = require('./rules');
-const residueLog = require('./residue-log');
 
 const MODE = (process.argv[2] || 'start').toLowerCase();
 const ALWAYS_REPORT = MODE === 'ensure';
@@ -245,32 +244,16 @@ if (MODE === 'stop') {
   const residue = rules.residue || {};
   if (!residue.scrub) emit(null);
   try {
-    const started = Date.now();
+    // The child records itself (--record): emit() below exits this process
+    // immediately, so a 'close' handler here never ran and every session-end
+    // pass went unrecorded. stdio is ignored for the same reason -- a pipe to
+    // a dead parent is an EPIPE waiting to kill the child.
     const child = spawn(
       process.execPath,
-      [path.join(ROOT, 'src', 'scrub-residue.js'), '--write', '--quiet', '--no-backup', '--skip-newer-than-min', '0'],
-      // stdio piped rather than ignored, so this pass is recorded in the job
-      // history like the scheduled one. A session-end scrub that leaves no
-      // trace is the one most likely to be blamed later for a change nobody
-      // can account for.
-      { detached: true, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }
+      [path.join(ROOT, 'src', 'scrub-residue.js'), '--write', '--quiet', '--no-backup', '--skip-newer-than-min', '0',
+        '--record', 'session-end'],
+      { detached: true, windowsHide: true, stdio: 'ignore' }
     );
-    let out = '';
-    child.stdout.on('data', (c) => (out += c));
-    child.stderr.on('data', (c) => (out += c));
-    child.on('close', (code) => {
-      const m = /files rewritten\s*:\s*(\d+)/.exec(out);
-      const v = /verify failures\s*:\s*(\d+)/.exec(out);
-      residueLog.record({
-        trigger: 'session-end',
-        ok: code === 0 && !(v && v[1] !== '0'),
-        filesRewritten: m ? Number(m[1]) : 0,
-        verifyFailures: v ? Number(v[1]) : 0,
-        exitCode: code,
-        durationMs: Date.now() - started,
-        output: out,
-      });
-    });
     child.unref();
   } catch (e) {
     // A failed scrub must not block session shutdown.

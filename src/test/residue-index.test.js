@@ -469,3 +469,42 @@ test('perf: a second scan pass over ~200 files is not slower than the first, and
     f.clean();
   }
 });
+
+test('scrub-residue --record: the pass writes its own job record (session-end exits before it could)', () => {
+  const f = mkfix();
+  try {
+    const file = path.join(f.work, 'dirty.txt');
+    fs.writeFileSync(file, 'this transcript contains SecretTest right here');
+    writeRules(f, baseRules(['SecretTest']));
+    writeKey(f);
+
+    const r = scrubRun(f, ['--write', '--quiet', '--no-backup', '--skip-newer-than-min', '0', '--record', 'session-end']);
+    assert.strictEqual(r.code, 0, r.out + r.err);
+    const jobs = fs.readFileSync(path.join(f.dir, '.claude', 'redaction', 'residue-jobs.jsonl'), 'utf8')
+      .trim().split('\n').map((l) => JSON.parse(l));
+    assert.strictEqual(jobs.length, 1, 'exactly one job record');
+    assert.strictEqual(jobs[0].trigger, 'session-end');
+    assert.strictEqual(jobs[0].filesRewritten, 1);
+    assert.strictEqual(jobs[0].ok, true);
+  } finally {
+    f.clean();
+  }
+});
+
+test('scrub-residue: a --manifest path is a flag value, not the only target (hourly scrub scanned 0 files)', () => {
+  const f = mkfix();
+  try {
+    const file = path.join(f.work, 'dirty.txt');
+    fs.writeFileSync(file, 'this transcript contains SecretTest right here');
+    writeRules(f, baseRules(['SecretTest']));
+    writeKey(f);
+    const manifest = path.join(f.dir, 'run.manifest.json');
+
+    const r = scrubRun(f, ['--write', '--quiet', '--no-backup', '--skip-newer-than-min', '0', '--manifest', manifest]);
+    assert.strictEqual(r.code, 0, r.out + r.err);
+    assert.strictEqual(num(/files rewritten\s*:\s*(\d+)/, r.out), 1, 'the target dir must still be scanned: ' + r.out);
+    assert.ok(!fs.readFileSync(file, 'utf8').includes('SecretTest'));
+  } finally {
+    f.clean();
+  }
+});

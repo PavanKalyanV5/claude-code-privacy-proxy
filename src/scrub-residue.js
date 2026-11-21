@@ -71,6 +71,14 @@ const RAW_LOG = (() => {
   const i = argv.indexOf('--raw-log');
   return i !== -1 && argv[i + 1] ? argv[i + 1] : null;
 })();
+// --record <trigger>: write this pass to the job history from HERE. The
+// session-end hook spawns this detached and exits at once, so it can never
+// read our output; without this the run did its work and left no record.
+const RECORD = (() => {
+  const i = argv.indexOf('--record');
+  return i !== -1 && argv[i + 1] ? argv[i + 1] : null;
+})();
+const T0 = Date.now();
 const NO_BACKUP = argv.includes('--no-backup');
 const NO_INDEX = argv.includes('--no-index');
 const REBUILD_INDEX = argv.includes('--rebuild-index');
@@ -109,7 +117,10 @@ const HOME = process.env.HOME || os.homedir();
 // without it nothing could test a script that rewrites hundreds of the
 // user's files, which is precisely the gap that let a crash reach production
 // in start.js.
-const explicitTargets = argv.filter((a) => !a.startsWith('--') && !/^\d+$/.test(a));
+// A flag's VALUE is not a target: `--manifest <path>` once made the hourly
+// scrub "scan" only the manifest path, examining 0 files on every run.
+const VALUE_FLAGS = new Set(['--manifest', '--raw-log', '--record', '--skip-newer-than-min']);
+const explicitTargets = argv.filter((a, i) => !a.startsWith('--') && !VALUE_FLAGS.has(argv[i - 1]));
 const TARGETS = explicitTargets.length
   ? explicitTargets.map((p) => path.resolve(p))
   : [
@@ -499,6 +510,17 @@ if (WRITE) {
   console.log(verifyFailures === 0
     ? 'Every rewritten JSONL line still parses. Re-run scan-residue.js to confirm the counts dropped.'
     : 'SOME FILES NO LONGER PARSE -- restore them from the backup above.');
+  if (RECORD) {
+    require('./residue-log').record({
+      trigger: RECORD,
+      ok: verifyFailures === 0,
+      filesRewritten: written,
+      verifyFailures,
+      exitCode: verifyFailures ? 1 : 0,
+      durationMs: Date.now() - T0,
+      output: `files examined           : ${scanned}\nfiles rewritten          : ${written}\nverify failures          : ${verifyFailures}\n`,
+    });
+  }
   process.exit(verifyFailures ? 1 : 0);
 } else {
   console.log(`would back up            : ${(bytesToBackup / 1024 / 1024).toFixed(1)} MB`);
