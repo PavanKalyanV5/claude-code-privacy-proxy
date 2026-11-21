@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.2.2 — 2026-11-21
+
+### Fixes
+
+- **residue**: hourly scrub scanned 0 files; session-end scrub left no record (96a3b79)
+
+_Plus 1 maintenance commit._
+
 ## v1.2.1 — 2026-10-22
 
 ### Fixes
