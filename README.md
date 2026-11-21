@@ -122,6 +122,21 @@ sentence is: *personal and organisational data is removed client-side before
 transmission, with configurable retention and an auditable record of every
 redaction pass.* That is a claim this tool lets you actually support.
 
+### For teams
+
+The proxy is MIT and stays free. If you're rolling it out across a team, or
+someone has asked you to *prove* what Claude Code sends, help is available:
+
+- **Setup across your team**: shared rules for client names and internal
+  hostnames, unattended install, and verification on every machine
+- **A dated evidence report** for your DPO, auditor or vendor questionnaire,
+  built from the tool's own values-free records
+- **Support** with a response-time commitment
+
+[Open a team-interest issue](https://github.com/PavanKalyanV5/claude-code-privacy-proxy/issues/new?template=team_interest.yml)
+to get started, or [sponsor the project](https://github.com/sponsors/PavanKalyanV5)
+if it's useful to you as it is.
+
 ---
 
 ## Why this exists

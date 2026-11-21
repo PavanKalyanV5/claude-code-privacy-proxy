@@ -1,0 +1,36 @@
+name: Team / company interest
+description: Rolling this out to a team, or need evidence for a DPO, auditor or vendor questionnaire.
+title: "[Team] "
+labels: ["team-interest"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is public. Don't post anything confidential. If you'd rather talk privately, say so and leave a way to reach you.
+  - type: dropdown
+    id: size
+    attributes:
+      label: How many developers use Claude Code?
+      options: ["1-5", "6-20", "21-100", "100+"]
+    validations:
+      required: true
+  - type: checkboxes
+    id: needs
+    attributes:
+      label: What would help?
+      options:
+        - label: Help setting it up across the team
+        - label: A dated evidence report for a DPO, auditor or vendor questionnaire
+        - label: One shared rules file (client names, internal hostnames) for everyone
+        - label: Unattended install (Intune, GPO, MDM, scripts)
+        - label: Support with a response-time commitment
+  - type: textarea
+    id: context
+    attributes:
+      label: What's driving this?
+      description: For example, a DPIA, an NDA with a client, a security review, or a questionnaire question you couldn't answer.
+  - type: input
+    id: contact
+    attributes:
+      label: Private contact (optional)
+      description: Leave blank to keep the conversation here.
